@@ -135,9 +135,10 @@ async def _(event: GroupMessageEvent, foo: str = EventPlainText()):
         keylist = os.listdir("replydata/"+gid+"/keyword")
         for i in range(len(keylist)):
             keystr = str(keylist[i])
-            keystr2 = keystr.rstrip('.json')
+            keystr2 = keystr.rstrip('json')
+            keystr3 = keystr2.rstrip('.')
             checkdel = '/关键词删除'
-            if keystr2 in mess and checkdel not in mess:
+            if keystr3 in mess and checkdel not in mess:
                 with open("replydata/"+gid+"/keyword/"+keystr+"", "r") as readmess:
                     mess2: str = readmess.read()
                 await matcher.send(mess2)
