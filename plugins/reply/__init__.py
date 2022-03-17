@@ -14,6 +14,9 @@ matcher = on_command("学习")
 async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
     gid = str(event.group_id)
     mess: str = str(foo)
+    if mess.replace('.', ' ') != mess or mess.replace('/', ' ') != mess or mess.replace('\\', ' ') != mess:
+        await matcher.send('输入非法字符!参数不能带有 / \ . 等符号')
+        return
     mess_list = mess.split()
     import os
     checkexdir = os.path.exists("replydata/"+gid)
@@ -34,6 +37,9 @@ matcher = on_command("删除")
 async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
     gid = str(event.group_id)
     mess: str = str(foo)
+    if mess.replace('.', ' ') != mess or mess.replace('/', ' ') != mess or mess.replace('\\', ' ') != mess:
+        await matcher.send('输入非法字符!参数不能带有 / \ . 等符号')
+        return
     mess_list = mess.split()
     import os
     checkexdoc = os.path.exists("replydata/"+gid+"/"+mess_list[0]+".json")
@@ -47,7 +53,8 @@ matcher = on_message()
 
 
 @matcher.handle()
-async def _(event: GroupMessageEvent, mess: str = EventPlainText()):
+async def _(event: GroupMessageEvent, foo: str = EventPlainText()):
+    mess: str = str(foo)
     gid = str(event.group_id)
     import os
     checkex: str = os.path.exists("replydata/"+gid+"/"+mess+".json")
