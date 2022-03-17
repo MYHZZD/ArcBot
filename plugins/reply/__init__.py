@@ -15,6 +15,14 @@ async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
     gid = str(event.group_id)
     mess: str = str(foo)
     mess_list = mess.split()
+    import os
+    checkexdir = os.path.exists("replydata/"+gid)
+    if checkexdir == False:
+        os.makedirs("replydata/"+gid)
+    checkexdoc = os.path.exists("replydata/"+gid+"/"+mess_list[0]+".json")
+    if checkexdoc == True:
+        await matcher.send("已经存在由 "+mess_list[0]+" 启动的对话，请删除原对话后添加~")
+        return
     with open("replydata/"+gid+"/"+mess_list[0]+".json", "w") as writemess:
         writemess.write(""+mess_list[1]+"")
     await matcher.send('爱尔学会啦~')
@@ -28,6 +36,10 @@ async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
     mess: str = str(foo)
     mess_list = mess.split()
     import os
+    checkexdoc = os.path.exists("replydata/"+gid+"/"+mess_list[0]+".json")
+    if checkexdoc == False:
+        await matcher.send("笨蛋!不存在这种对话哦")
+        return
     os.remove("replydata/"+gid+"/"+mess_list[0]+".json")
     await matcher.send('已删除对话')
 
