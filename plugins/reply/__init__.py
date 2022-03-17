@@ -1,0 +1,59 @@
+from nonebot import get_driver, on_message, on_command
+from nonebot.params import EventMessage, EventPlainText, Command, CommandArg
+from nonebot.adapters import Message
+from nonebot.adapters.onebot.v11 import GroupMessageEvent
+
+from .config import Config
+global_config = get_driver().config
+config = Config.parse_obj(global_config)
+
+matcher = on_command("学习")
+
+
+@matcher.handle()
+async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
+    gid = str(event.group_id)
+    mess: str = str(foo)
+    mess_list = mess.split()
+    with open("replydata/"+gid+"/"+mess_list[0]+".json", "w") as writemess:
+        writemess.write(""+mess_list[1]+"")
+    await matcher.send('爱尔学会啦~')
+
+matcher = on_command("删除")
+
+
+@matcher.handle()
+async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
+    gid = str(event.group_id)
+    mess: str = str(foo)
+    mess_list = mess.split()
+    import os
+    os.remove("replydata/"+gid+"/"+mess_list[0]+".json")
+    await matcher.send('已删除对话')
+
+matcher = on_message()
+
+
+@matcher.handle()
+async def _(event: GroupMessageEvent, mess: str = EventPlainText()):
+    gid = str(event.group_id)
+    import os
+    checkex: str = os.path.exists("replydata/"+gid+"/"+mess+".json")
+    if checkex == True:
+        with open("replydata/"+gid+"/"+mess+".json", "r") as readmess:
+            mess2: str = readmess.read()
+        await matcher.send(mess2)
+
+matcher = on_message()
+
+
+@matcher.handle()
+async def _(mess: str = EventPlainText()):
+    if mess == '老婆':
+        await matcher.send('老公！')
+    if mess == '和我结婚':
+        await matcher.send('支持')
+    if mess == '支持':
+        await matcher.send('不行')
+    if mess == '不行':
+        await matcher.send('支持')
