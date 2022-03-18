@@ -137,8 +137,57 @@ async def _(event: GroupMessageEvent, foo: str = EventPlainText()):
             keystr = str(keylist[i])
             keystr2 = keystr.rstrip('json')
             keystr3 = keystr2.rstrip('.')
-            checkdel = '/关键词删除'
-            if keystr3 in mess and checkdel not in mess:
+            checkdel1 = '/关键词删除'
+            checkadd1 = '/关键词'
+            checkdel2 = '/学习'
+            checkadd2 = '/删除'
+            if keystr3 in mess and checkdel1 not in mess and checkadd1 not in mess and checkdel2 not in mess and checkadd2 not in mess:
+                checkexdoc = os.path.exists("replydata/"+gid+"/"+keystr+"")
+                if checkexdoc == True and keystr3 == mess:
+                    return
                 with open("replydata/"+gid+"/keyword/"+keystr+"", "r") as readmess:
                     mess2: str = readmess.read()
                 await matcher.send(mess2)
+
+
+matcher = on_command("学习列表")
+
+
+@matcher.handle()
+async def _(event: GroupMessageEvent):
+    gid = str(event.group_id)
+    import os
+    keylist = os.listdir("replydata/"+gid+"")
+    sendmess = ''
+    for i in range(len(keylist)):
+        keystr = str(keylist[i])
+        keystr2 = keystr.rstrip('json')
+        keystr3 = keystr2.rstrip('.')
+        if i != 0:
+            keystr4 = sendmess+keystr3+'  '
+            sendmess = keystr4
+    if sendmess != '':
+        await matcher.send(sendmess)
+    else:
+        await matcher.send('本群暂无被学习的对话')
+
+
+matcher = on_command("关键词列表")
+
+
+@matcher.handle()
+async def _(event: GroupMessageEvent):
+    gid = str(event.group_id)
+    import os
+    keylist = os.listdir("replydata/"+gid+"/keyword")
+    sendmess = ''
+    for i in range(len(keylist)):
+        keystr = str(keylist[i])
+        keystr2 = keystr.rstrip('json')
+        keystr3 = keystr2.rstrip('.')
+        keystr4 = sendmess+keystr3+'  '
+        sendmess = keystr4
+    if sendmess != '':
+        await matcher.send(sendmess)
+    else:
+        await matcher.send('本群暂无关键词')
