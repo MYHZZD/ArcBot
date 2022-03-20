@@ -26,8 +26,13 @@ async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
     if checkexdoc == True:
         await matcher.send("已经存在由 "+mess_list[0]+" 启动的对话，请删除原对话后添加~")
         return
+    messwin = ''
+    for i in range(len(mess_list)):
+        if i!= 0:
+            messwin2=messwin+mess_list[i]+' '
+            messwin = messwin2
     with open("replydata/"+gid+"/"+mess_list[0]+".json", "w", encoding='utf8') as writemess:
-        writemess.write(""+mess_list[1]+"")
+        writemess.write(""+messwin2+"")
     await matcher.send('爱尔学会啦~')
 
 matcher = on_command("删除")
@@ -59,7 +64,7 @@ async def _(event: GroupMessageEvent, foo: str = EventPlainText()):
     import os
     checkex: str = os.path.exists("replydata/"+gid+"/"+mess+".json")
     if checkex == True:
-        with open("replydata/"+gid+"/"+mess+".json", "r") as readmess:
+        with open("replydata/"+gid+"/"+mess+".json", "r", encoding='utf8') as readmess:
             mess2: str = readmess.read()
         await matcher.send(mess2)
 
@@ -98,8 +103,13 @@ async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
     if checkexdoc == True:
         await matcher.send("已经存在由 "+mess_list[0]+" 为关键词的对话，请删除原对话后添加~")
         return
+    messwin = ''
+    for i in range(len(mess_list)):
+        if i!= 0:
+            messwin2=messwin+mess_list[i]+' '
+            messwin = messwin2
     with open("replydata/"+gid+"/keyword/"+mess_list[0]+".json", "w", encoding='utf8') as writemess:
-        writemess.write(""+mess_list[1]+"")
+        writemess.write(""+messwin+"")
     await matcher.send('爱尔学会啦~')
 
 matcher = on_command("关键词删除")
@@ -145,7 +155,7 @@ async def _(event: GroupMessageEvent, foo: str = EventPlainText()):
                 checkexdoc = os.path.exists("replydata/"+gid+"/"+keystr+"")
                 if checkexdoc == True and keystr3 == mess:
                     return
-                with open("replydata/"+gid+"/keyword/"+keystr+"", "r") as readmess:
+                with open("replydata/"+gid+"/keyword/"+keystr+"", "r", encoding='utf8') as readmess:
                     mess2: str = readmess.read()
                 await matcher.send(mess2)
 
