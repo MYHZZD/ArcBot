@@ -1,3 +1,4 @@
+import json
 from nonebot import get_driver, on_message, on_command, on_keyword
 from nonebot.params import EventMessage, EventPlainText, Command, CommandArg
 from nonebot.adapters import Message
@@ -13,6 +14,7 @@ matcher = on_command("学习")
 @matcher.handle()
 async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
     gid = str(event.group_id)
+    uid = str(event.user_id)
     mess: str = str(foo)
     mess_list = mess.split()
     if mess_list[0].replace('.\\', ' ') != mess_list[0] or mess_list[0].replace('./', ' ') != mess_list[0]:
@@ -31,8 +33,9 @@ async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
         if i!= 0:
             messwin2=messwin+mess_list[i]+' '
             messwin = messwin2
+    mess_dic = {'message':messwin2,'uploader':uid}
     with open("replydata/"+gid+"/"+mess_list[0]+".json", "w", encoding='utf8') as writemess:
-        writemess.write(""+messwin2+"")
+        json.dump(mess_dic, writemess, ensure_ascii=False)
     await matcher.send('爱尔学会啦~')
 
 matcher = on_command("删除")
@@ -66,7 +69,9 @@ async def _(event: GroupMessageEvent, foo: str = EventPlainText()):
     if checkex == True:
         with open("replydata/"+gid+"/"+mess+".json", "r", encoding='utf8') as readmess:
             mess2: str = readmess.read()
-        await matcher.send(mess2)
+            mess_dic = json.loads(mess2)
+            mess3 = mess_dic['message']
+        await matcher.send(mess3)
 
 matcher = on_message()
 
@@ -89,6 +94,7 @@ matcher = on_command("关键词")
 @matcher.handle()
 async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
     gid = str(event.group_id)
+    uid = str(event.user_id)
     mess: str = str(foo)
     mess_list = mess.split()
     if mess_list[0].replace('.\\', ' ') != mess_list[0] or mess_list[0].replace('./', ' ') != mess_list[0]:
@@ -108,8 +114,9 @@ async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
         if i!= 0:
             messwin2=messwin+mess_list[i]+' '
             messwin = messwin2
+    mess_dic = {'message':messwin2,'uploader':uid}
     with open("replydata/"+gid+"/keyword/"+mess_list[0]+".json", "w", encoding='utf8') as writemess:
-        writemess.write(""+messwin+"")
+        json.dump(mess_dic, writemess, ensure_ascii=False)
     await matcher.send('爱尔学会啦~')
 
 matcher = on_command("关键词删除")
@@ -157,7 +164,9 @@ async def _(event: GroupMessageEvent, foo: str = EventPlainText()):
                     return
                 with open("replydata/"+gid+"/keyword/"+keystr+"", "r", encoding='utf8') as readmess:
                     mess2: str = readmess.read()
-                await matcher.send(mess2)
+                    mess_dic = json.loads(mess2)
+                    mess3 = mess_dic['message']
+                await matcher.send(mess3)
 
 
 matcher = on_command("学习列表")
