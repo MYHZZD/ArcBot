@@ -26,7 +26,7 @@ async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
     if checkexdoc == True:
         await matcher.send("已经存在由 "+mess_list[0]+" 启动的对话，请删除原对话后添加~")
         return
-    with open("replydata/"+gid+"/"+mess_list[0]+".json", "w") as writemess:
+    with open("replydata/"+gid+"/"+mess_list[0]+".json", "w", encoding='utf8') as writemess:
         writemess.write(""+mess_list[1]+"")
     await matcher.send('爱尔学会啦~')
 
@@ -98,7 +98,7 @@ async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
     if checkexdoc == True:
         await matcher.send("已经存在由 "+mess_list[0]+" 为关键词的对话，请删除原对话后添加~")
         return
-    with open("replydata/"+gid+"/keyword/"+mess_list[0]+".json", "w") as writemess:
+    with open("replydata/"+gid+"/keyword/"+mess_list[0]+".json", "w", encoding='utf8') as writemess:
         writemess.write(""+mess_list[1]+"")
     await matcher.send('爱尔学会啦~')
 
