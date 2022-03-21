@@ -87,6 +87,8 @@ async def _(mess: str = EventPlainText()):
         await matcher.send('不行')
     if mess == '不行':
         await matcher.send('支持')
+    if mess == 'bot使用说明':
+        await matcher.send('前往gayhub https://github.com/MYHZZD/ArcBot/blob/main/README.md 欢迎提issue哦')
 
 
 matcher = on_command("关键词")
