@@ -23,7 +23,7 @@ async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
     import os
     checkexdoc = os.path.exists("scheduledata/"+uid+".json")
     if checkexdoc == False:
-        a = open("scheduledata/"+uid+".json",'w')
+        a = open("scheduledata/"+uid+".json", 'w')
         a.write('{}')
         a.close()
 
@@ -41,7 +41,7 @@ async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
     datab = {}
 
     with open("scheduledata/"+uid+".json", "r", encoding='utf8') as readjson:
-        dataa=readjson.readline()
+        dataa = readjson.readline()
         datab = json.loads(dataa)
 
     classhit.update(datab)
@@ -60,11 +60,11 @@ async def _(event: GroupMessageEvent, foo: str = EventPlainText()):
     if mess != '今日课表':
         return
 
-    t='20220221'
-    startday =int(time.mktime(time.strptime(t,"%Y%m%d")))
+    t = '20220221'
+    startday = int(time.mktime(time.strptime(t, "%Y%m%d")))
 
     today = time.time()
-    weekpass=math.ceil((today-startday)/(7*24*3600))
+    weekpass = math.ceil((today-startday)/(7*24*3600))
     week = weekpass
     day = datetime.now().isoweekday()
     if day == 1:
@@ -81,49 +81,54 @@ async def _(event: GroupMessageEvent, foo: str = EventPlainText()):
         dayth = '六'
     if day == 7:
         dayth = '日'
-    output = '今天是星期%s，本学期第%s周 \n'%(dayth,week)
-  
+    output = '今天是星期%s，本学期第%s周 \n' % (dayth, week)
+
     import os
     checkexdoc = os.path.exists("scheduledata/"+uid+".json")
     if checkexdoc == True:
         with open("scheduledata/"+uid+".json", "r", encoding='utf8') as readjson:
-             dataa=readjson.readline()
-             datab = json.loads(dataa)
-        
-        pos=1
-        for key in datab:
-            classdata = datab[""+key+""]
-            classpos = '%s.%s'%(day,pos)
-            if classpos in str(classdata['课程时间']) and week >= int(classdata['起始周数']) and week <= int(classdata['结束周数']):
-                output += '第%s节大课 %s %s \n'%(pos,key,str(classdata['教室地址']))
-        
-        pos=2
-        for key in datab:
-            classdata = datab[""+key+""]
-            classpos = '%s.%s'%(day,pos)
-            if classpos in str(classdata['课程时间']) and week >= int(classdata['起始周数']) and week <= int(classdata['结束周数']):
-                output += '第%s节大课 %s %s \n'%(pos,key,str(classdata['教室地址']))
+            dataa = readjson.readline()
+            datab = json.loads(dataa)
 
-        pos=3
+        pos = 1
         for key in datab:
             classdata = datab[""+key+""]
-            classpos = '%s.%s'%(day,pos)
+            classpos = '%s.%s' % (day, pos)
             if classpos in str(classdata['课程时间']) and week >= int(classdata['起始周数']) and week <= int(classdata['结束周数']):
-                output += '第%s节大课 %s %s \n'%(pos,key,str(classdata['教室地址']))
+                output += '第%s节大课 %s %s \n' % (pos,
+                                               key, str(classdata['教室地址']))
 
-        pos=4
+        pos = 2
         for key in datab:
             classdata = datab[""+key+""]
-            classpos = '%s.%s'%(day,pos)
+            classpos = '%s.%s' % (day, pos)
             if classpos in str(classdata['课程时间']) and week >= int(classdata['起始周数']) and week <= int(classdata['结束周数']):
-                output += '第%s节大课 %s %s \n'%(pos,key,str(classdata['教室地址']))
+                output += '第%s节大课 %s %s \n' % (pos,
+                                               key, str(classdata['教室地址']))
 
-        pos=5
+        pos = 3
         for key in datab:
             classdata = datab[""+key+""]
-            classpos = '%s.%s'%(day,pos)
+            classpos = '%s.%s' % (day, pos)
             if classpos in str(classdata['课程时间']) and week >= int(classdata['起始周数']) and week <= int(classdata['结束周数']):
-                output += '第%s节大课 %s %s \n'%(pos,key,str(classdata['教室地址']))
+                output += '第%s节大课 %s %s \n' % (pos,
+                                               key, str(classdata['教室地址']))
+
+        pos = 4
+        for key in datab:
+            classdata = datab[""+key+""]
+            classpos = '%s.%s' % (day, pos)
+            if classpos in str(classdata['课程时间']) and week >= int(classdata['起始周数']) and week <= int(classdata['结束周数']):
+                output += '第%s节大课 %s %s \n' % (pos,
+                                               key, str(classdata['教室地址']))
+
+        pos = 5
+        for key in datab:
+            classdata = datab[""+key+""]
+            classpos = '%s.%s' % (day, pos)
+            if classpos in str(classdata['课程时间']) and week >= int(classdata['起始周数']) and week <= int(classdata['结束周数']):
+                output += '第%s节大课 %s %s \n' % (pos,
+                                               key, str(classdata['教室地址']))
 
         await matcher.send(output)
 
@@ -137,11 +142,11 @@ async def _(event: GroupMessageEvent, foo: str = EventPlainText()):
     if mess != '明日课表':
         return
 
-    t='20220221'
-    startday =int(time.mktime(time.strptime(t,"%Y%m%d")))
+    t = '20220221'
+    startday = int(time.mktime(time.strptime(t, "%Y%m%d")))
 
     today = time.time()
-    weekpass=math.ceil((today-startday)/(7*24*3600))
+    weekpass = math.ceil((today-startday)/(7*24*3600))
     week = weekpass
     day = datetime.now().isoweekday()+1
     if day == 8:
@@ -161,48 +166,53 @@ async def _(event: GroupMessageEvent, foo: str = EventPlainText()):
         dayth = '六'
     if day == 7:
         dayth = '日'
-    output = '明天是星期%s，本学期第%s周 \n'%(dayth,week)
-  
+    output = '明天是星期%s，本学期第%s周 \n' % (dayth, week)
+
     import os
     checkexdoc = os.path.exists("scheduledata/"+uid+".json")
     if checkexdoc == True:
         with open("scheduledata/"+uid+".json", "r", encoding='utf8') as readjson:
-             dataa=readjson.readline()
-             datab = json.loads(dataa)
-        
-        pos=1
-        for key in datab:
-            classdata = datab[""+key+""]
-            classpos = '%s.%s'%(day,pos)
-            if classpos in str(classdata['课程时间']) and week >= int(classdata['起始周数']) and week <= int(classdata['结束周数']):
-                output += '第%s节大课 %s %s \n'%(pos,key,str(classdata['教室地址']))
-        
-        pos=2
-        for key in datab:
-            classdata = datab[""+key+""]
-            classpos = '%s.%s'%(day,pos)
-            if classpos in str(classdata['课程时间']) and week >= int(classdata['起始周数']) and week <= int(classdata['结束周数']):
-                output += '第%s节大课 %s %s \n'%(pos,key,str(classdata['教室地址']))
+            dataa = readjson.readline()
+            datab = json.loads(dataa)
 
-        pos=3
+        pos = 1
         for key in datab:
             classdata = datab[""+key+""]
-            classpos = '%s.%s'%(day,pos)
+            classpos = '%s.%s' % (day, pos)
             if classpos in str(classdata['课程时间']) and week >= int(classdata['起始周数']) and week <= int(classdata['结束周数']):
-                output += '第%s节大课 %s %s \n'%(pos,key,str(classdata['教室地址']))
+                output += '第%s节大课 %s %s \n' % (pos,
+                                               key, str(classdata['教室地址']))
 
-        pos=4
+        pos = 2
         for key in datab:
             classdata = datab[""+key+""]
-            classpos = '%s.%s'%(day,pos)
+            classpos = '%s.%s' % (day, pos)
             if classpos in str(classdata['课程时间']) and week >= int(classdata['起始周数']) and week <= int(classdata['结束周数']):
-                output += '第%s节大课 %s %s \n'%(pos,key,str(classdata['教室地址']))
+                output += '第%s节大课 %s %s \n' % (pos,
+                                               key, str(classdata['教室地址']))
 
-        pos=5
+        pos = 3
         for key in datab:
             classdata = datab[""+key+""]
-            classpos = '%s.%s'%(day,pos)
+            classpos = '%s.%s' % (day, pos)
             if classpos in str(classdata['课程时间']) and week >= int(classdata['起始周数']) and week <= int(classdata['结束周数']):
-                output += '第%s节大课 %s %s \n'%(pos,key,str(classdata['教室地址']))
+                output += '第%s节大课 %s %s \n' % (pos,
+                                               key, str(classdata['教室地址']))
+
+        pos = 4
+        for key in datab:
+            classdata = datab[""+key+""]
+            classpos = '%s.%s' % (day, pos)
+            if classpos in str(classdata['课程时间']) and week >= int(classdata['起始周数']) and week <= int(classdata['结束周数']):
+                output += '第%s节大课 %s %s \n' % (pos,
+                                               key, str(classdata['教室地址']))
+
+        pos = 5
+        for key in datab:
+            classdata = datab[""+key+""]
+            classpos = '%s.%s' % (day, pos)
+            if classpos in str(classdata['课程时间']) and week >= int(classdata['起始周数']) and week <= int(classdata['结束周数']):
+                output += '第%s节大课 %s %s \n' % (pos,
+                                               key, str(classdata['教室地址']))
 
         await matcher.send(output)

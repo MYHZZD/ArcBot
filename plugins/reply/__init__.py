@@ -123,6 +123,10 @@ async def _(event: GroupMessageEvent, foo: str = EventPlainText()):
             mess2: str = readmess.read()
             mess_dic = json.loads(mess2)
             mess3 = mess_dic['message']
+
+            if mess_dic['uploader'] in bannedlist:
+                return
+
         await matcher.send(mess3)
 
 matcher = on_message(priority=99)
@@ -271,6 +275,10 @@ async def _(event: GroupMessageEvent, foo: str = EventPlainText()):
                     mess2: str = readmess.read()
                     mess_dic = json.loads(mess2)
                     mess3 = mess_dic['message']
+
+                    if mess_dic['uploader'] in bannedlist:
+                        return
+
                 await matcher.send(mess3)
 
 
@@ -299,7 +307,7 @@ async def _(event: GroupMessageEvent):
         return
 
     checkexdir = os.path.exists("replydata/"+gid+"")
-    if checkexdir == True:    
+    if checkexdir == True:
         keylist = os.listdir("replydata/"+gid+"")
         sendmess = ''
         for i in range(len(keylist)):
@@ -307,6 +315,12 @@ async def _(event: GroupMessageEvent):
             keystr2 = keystr.rstrip('json')
             keystr3 = keystr2.rstrip('.')
             if keystr3 != 'keyword':
+
+                with open("replydata/"+gid+"/"+keystr+"", "r", encoding='utf8') as readmess:
+                    mess_dic = json.load(readmess)
+                    if mess_dic['uploader'] in bannedlist:
+                        keystr3 = keystr3+'[已屏蔽]'
+
                 keystr4 = sendmess+keystr3+'  '
                 sendmess = keystr4
         if sendmess != '':
@@ -340,13 +354,19 @@ async def _(event: GroupMessageEvent):
         return
 
     checkexdir = os.path.exists("replydata/"+gid+"/keyword")
-    if checkexdir == True:       
+    if checkexdir == True:
         keylist = os.listdir("replydata/"+gid+"/keyword")
         sendmess = ''
         for i in range(len(keylist)):
             keystr = str(keylist[i])
             keystr2 = keystr.rstrip('json')
             keystr3 = keystr2.rstrip('.')
+
+            with open("replydata/"+gid+"/keyword/"+keystr+"", "r", encoding='utf8') as readmess:
+                mess_dic = json.load(readmess)
+                if mess_dic['uploader'] in bannedlist:
+                    keystr3 = keystr3+'[已屏蔽]'
+
             keystr4 = sendmess+keystr3+'  '
             sendmess = keystr4
         if sendmess != '':
@@ -365,7 +385,7 @@ async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
     checkperdir = os.path.exists("permissiondata")
     if checkperdir == False:
         os.makedirs("permissiondata")
-    
+
     checkexdoc = os.path.exists("permissiondata/"+gid+".json")
     if checkexdoc == True:
         await matcher.send('此功能已启用')
@@ -396,11 +416,11 @@ matcher = on_command("禁用回复功能")
 async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
     gid = str(event.group_id)
     uid = str(event.user_id)
-    
+
     checkperdir = os.path.exists("permissiondata")
     if checkperdir == False:
         os.makedirs("permissiondata")
-    
+
     checkexdoc = os.path.exists("permissiondata/"+gid+".json.disable")
     if checkexdoc == True:
         await matcher.send('此功能已禁用')
@@ -428,11 +448,11 @@ matcher = on_command("添加管理员")
 async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
     gid = str(event.group_id)
     uid = str(event.user_id)
-    
+
     checkperdir = os.path.exists("permissiondata")
     if checkperdir == False:
         os.makedirs("permissiondata")
-    
+
     checkexdoc = os.path.exists("permissiondata/"+gid+".json")
     if checkexdoc == False:
         await matcher.send('本群未开启此功能或已禁用')
@@ -458,11 +478,11 @@ matcher = on_command("封禁")
 async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
     gid = str(event.group_id)
     uid = str(event.user_id)
-    
+
     checkperdir = os.path.exists("permissiondata")
     if checkperdir == False:
         os.makedirs("permissiondata")
-    
+
     checkexdoc = os.path.exists("permissiondata/"+gid+".json")
     if checkexdoc == False:
         await matcher.send('本群未开启此功能或已禁用')
