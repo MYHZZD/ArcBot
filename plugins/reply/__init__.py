@@ -34,6 +34,8 @@ async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
         return
 
     mess: str = str(foo)
+    if mess == '':
+        return
     mess_list = mess.split()
     if mess_list[0].replace('.\\', ' ') != mess_list[0] or mess_list[0].replace('./', ' ') != mess_list[0]:
         await matcher.send('输入非法字符!参数不能带有 / \ . 等符号')
@@ -92,7 +94,7 @@ async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
     os.remove("replydata/"+gid+"/"+mess_list[0]+".json")
     await matcher.send('已删除对话')
 
-matcher = on_message()
+matcher = on_message(priority=99)
 
 
 @matcher.handle()
@@ -123,7 +125,7 @@ async def _(event: GroupMessageEvent, foo: str = EventPlainText()):
             mess3 = mess_dic['message']
         await matcher.send(mess3)
 
-matcher = on_message()
+matcher = on_message(priority=99)
 
 
 @matcher.handle()
@@ -165,6 +167,8 @@ async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
         return
 
     mess: str = str(foo)
+    if mess == '':
+        return
     mess_list = mess.split()
     if mess_list[0].replace('.\\', ' ') != mess_list[0] or mess_list[0].replace('./', ' ') != mess_list[0]:
         await matcher.send('输入非法字符!参数不能带有 / \ . 等符号')
@@ -225,7 +229,7 @@ async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
     os.remove("replydata/"+gid+"/keyword/"+mess_list[0]+".json")
     await matcher.send('已删除对话')
 
-matcher = on_message()
+matcher = on_message(priority=99)
 
 
 @matcher.handle()
@@ -373,7 +377,7 @@ async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
             json.dump(permissiondata, writemess, ensure_ascii=False)
         await matcher.send('启用成功')
     if checkexdoc == True:
-        with open("permissiondata/"+gid+".json.disabled", "w", encoding='utf8') as readprem:
+        with open("permissiondata/"+gid+".json.disabled", "r", encoding='utf8') as readprem:
             prem0: str = readprem.read()
             prem = json.loads(prem0)
             adminlist = str(prem['admin'])
@@ -405,7 +409,7 @@ async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
     if checkexdoc == False:
         await matcher.send('本群未开启此功能')
     if checkexdoc == True:
-        with open("permissiondata/"+gid+".json", "w", encoding='utf8') as readprem:
+        with open("permissiondata/"+gid+".json", "r", encoding='utf8') as readprem:
             prem0: str = readprem.read()
             prem = json.loads(prem0)
             adminlist = str(prem['admin'])
