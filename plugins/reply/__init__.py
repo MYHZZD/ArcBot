@@ -34,6 +34,8 @@ async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
         return
 
     mess: str = str(foo)
+    if mess == '':
+        return
     mess_list = mess.split()
     if mess_list[0].replace('.\\', ' ') != mess_list[0] or mess_list[0].replace('./', ' ') != mess_list[0]:
         await matcher.send('输入非法字符!参数不能带有 / \ . 等符号')
@@ -92,7 +94,7 @@ async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
     os.remove("replydata/"+gid+"/"+mess_list[0]+".json")
     await matcher.send('已删除对话')
 
-matcher = on_message()
+matcher = on_message(priority=99)
 
 
 @matcher.handle()
@@ -121,9 +123,13 @@ async def _(event: GroupMessageEvent, foo: str = EventPlainText()):
             mess2: str = readmess.read()
             mess_dic = json.loads(mess2)
             mess3 = mess_dic['message']
+
+            if mess_dic['uploader'] in bannedlist:
+                return
+
         await matcher.send(mess3)
 
-matcher = on_message()
+matcher = on_message(priority=99)
 
 
 @matcher.handle()
@@ -165,6 +171,8 @@ async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
         return
 
     mess: str = str(foo)
+    if mess == '':
+        return
     mess_list = mess.split()
     if mess_list[0].replace('.\\', ' ') != mess_list[0] or mess_list[0].replace('./', ' ') != mess_list[0]:
         await matcher.send('输入非法字符!参数不能带有 / \ . 等符号')
@@ -225,7 +233,7 @@ async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
     os.remove("replydata/"+gid+"/keyword/"+mess_list[0]+".json")
     await matcher.send('已删除对话')
 
-matcher = on_message()
+matcher = on_message(priority=99)
 
 
 @matcher.handle()
@@ -267,6 +275,10 @@ async def _(event: GroupMessageEvent, foo: str = EventPlainText()):
                     mess2: str = readmess.read()
                     mess_dic = json.loads(mess2)
                     mess3 = mess_dic['message']
+
+                    if mess_dic['uploader'] in bannedlist:
+                        return
+
                 await matcher.send(mess3)
 
 
@@ -295,7 +307,7 @@ async def _(event: GroupMessageEvent):
         return
 
     checkexdir = os.path.exists("replydata/"+gid+"")
-    if checkexdir == True:    
+    if checkexdir == True:
         keylist = os.listdir("replydata/"+gid+"")
         sendmess = ''
         for i in range(len(keylist)):
@@ -303,6 +315,12 @@ async def _(event: GroupMessageEvent):
             keystr2 = keystr.rstrip('json')
             keystr3 = keystr2.rstrip('.')
             if keystr3 != 'keyword':
+
+                with open("replydata/"+gid+"/"+keystr+"", "r", encoding='utf8') as readmess:
+                    mess_dic = json.load(readmess)
+                    if mess_dic['uploader'] in bannedlist:
+                        keystr3 = keystr3+'[已屏蔽]'
+
                 keystr4 = sendmess+keystr3+'  '
                 sendmess = keystr4
         if sendmess != '':
@@ -336,13 +354,19 @@ async def _(event: GroupMessageEvent):
         return
 
     checkexdir = os.path.exists("replydata/"+gid+"/keyword")
-    if checkexdir == True:       
+    if checkexdir == True:
         keylist = os.listdir("replydata/"+gid+"/keyword")
         sendmess = ''
         for i in range(len(keylist)):
             keystr = str(keylist[i])
             keystr2 = keystr.rstrip('json')
             keystr3 = keystr2.rstrip('.')
+
+            with open("replydata/"+gid+"/keyword/"+keystr+"", "r", encoding='utf8') as readmess:
+                mess_dic = json.load(readmess)
+                if mess_dic['uploader'] in bannedlist:
+                    keystr3 = keystr3+'[已屏蔽]'
+
             keystr4 = sendmess+keystr3+'  '
             sendmess = keystr4
         if sendmess != '':
@@ -361,7 +385,7 @@ async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
     checkperdir = os.path.exists("permissiondata")
     if checkperdir == False:
         os.makedirs("permissiondata")
-    
+
     checkexdoc = os.path.exists("permissiondata/"+gid+".json")
     if checkexdoc == True:
         await matcher.send('此功能已启用')
@@ -373,7 +397,7 @@ async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
             json.dump(permissiondata, writemess, ensure_ascii=False)
         await matcher.send('启用成功')
     if checkexdoc == True:
-        with open("permissiondata/"+gid+".json.disabled", "w", encoding='utf8') as readprem:
+        with open("permissiondata/"+gid+".json.disabled", "r", encoding='utf8') as readprem:
             prem0: str = readprem.read()
             prem = json.loads(prem0)
             adminlist = str(prem['admin'])
@@ -392,11 +416,11 @@ matcher = on_command("禁用回复功能")
 async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
     gid = str(event.group_id)
     uid = str(event.user_id)
-    
+
     checkperdir = os.path.exists("permissiondata")
     if checkperdir == False:
         os.makedirs("permissiondata")
-    
+
     checkexdoc = os.path.exists("permissiondata/"+gid+".json.disable")
     if checkexdoc == True:
         await matcher.send('此功能已禁用')
@@ -405,7 +429,7 @@ async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
     if checkexdoc == False:
         await matcher.send('本群未开启此功能')
     if checkexdoc == True:
-        with open("permissiondata/"+gid+".json", "w", encoding='utf8') as readprem:
+        with open("permissiondata/"+gid+".json", "r", encoding='utf8') as readprem:
             prem0: str = readprem.read()
             prem = json.loads(prem0)
             adminlist = str(prem['admin'])
@@ -424,11 +448,11 @@ matcher = on_command("添加管理员")
 async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
     gid = str(event.group_id)
     uid = str(event.user_id)
-    
+
     checkperdir = os.path.exists("permissiondata")
     if checkperdir == False:
         os.makedirs("permissiondata")
-    
+
     checkexdoc = os.path.exists("permissiondata/"+gid+".json")
     if checkexdoc == False:
         await matcher.send('本群未开启此功能或已禁用')
@@ -454,11 +478,11 @@ matcher = on_command("封禁")
 async def _(event: GroupMessageEvent, foo: Message = CommandArg()):
     gid = str(event.group_id)
     uid = str(event.user_id)
-    
+
     checkperdir = os.path.exists("permissiondata")
     if checkperdir == False:
         os.makedirs("permissiondata")
-    
+
     checkexdoc = os.path.exists("permissiondata/"+gid+".json")
     if checkexdoc == False:
         await matcher.send('本群未开启此功能或已禁用')
