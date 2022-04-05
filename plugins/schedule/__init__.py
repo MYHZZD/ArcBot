@@ -147,6 +147,7 @@ async def _(event: GroupMessageEvent, foo: str = EventPlainText()):
 
     today = time.time()
     weekpass = math.ceil((today+24*3600-startday)/(7*24*3600))
+    weekpass = math.ceil((today-startday)/(7*24*3600))
     week = weekpass
     day = datetime.now().isoweekday()+1
     if day == 8:
