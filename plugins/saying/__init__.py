@@ -2,10 +2,11 @@ import requests
 import time
 import json
 import os
+import random
 from nonebot import get_driver, on_message, on_command
 from nonebot.params import EventMessage, EventPlainText, CommandArg
 from nonebot.adapters import Message
-from nonebot.adapters.onebot.v11 import GroupMessageEvent, Message
+from nonebot.adapters.onebot.v11 import GroupMessageEvent, Message, MessageSegment
 
 from .config import Config
 global_config = get_driver().config
@@ -26,7 +27,7 @@ def download_img(img_url, gid, img_name):
     checkexdir = os.path.exists(filepath)
     if checkexdir == False:
         os.makedirs(filepath)
-    filename = "data/saying/"+gid+"/"+img_name+".png"
+    filename = "data/saying/"+gid+"/"+img_name
     header = {
         "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Safari/537.36 Edg/95.0.1020.53",
@@ -69,12 +70,29 @@ async def _(event: GroupMessageEvent, Mes: Message = CommandArg()):
             download_img(img_url, gid, img_name)
             mapping_table(gid, uid, img_name, who_said)
 
-    await matcher.send("已记录"+who_said)
+    await matcher.send("已记录")
 
 
 matcher = on_message(priority=99)
 
 
 @matcher.handle()
-async def _(event: GroupMessageEvent, foo: str = EventPlainText()):
-    return
+async def _(event: GroupMessageEvent, Message: str = EventPlainText()):
+    gid = str(event.group_id)
+
+    if '说过' in Message:
+        with open(jsonname, "r", encoding='utf8') as readfile:
+            jsondata: str = readfile.read()
+            mappings = json.loads(jsondata)
+
+            pic = []
+            for Key in mappings:
+                if Key != 'Plugin':
+                    Data = mappings[Key]
+                    Data_2 = Data['Data']
+                    if Message in Data['Who'] and gid == Data_2['Group']:
+                       pic.append(str(Data_2['Picture ID']))
+            num = random.randint(0, len(pic)-1)
+            img_path = f"/root/ArcBot/data/saying/"+gid+"/"+pic[num]
+            Msg = MessageSegment.image(f'file://{img_path}')
+            await matcher.send(Msg)
