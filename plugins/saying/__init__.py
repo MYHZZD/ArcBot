@@ -2,12 +2,7 @@ import requests
 import time
 import json
 import os
-import httpx
-import aiofiles
-from typing import Optional
-from pathlib import Path
 from nonebot import get_driver, on_message, on_command
-from nonebot.log import logger
 from nonebot.params import EventMessage, EventPlainText, CommandArg
 from nonebot.adapters import Message
 from nonebot.adapters.onebot.v11 import GroupMessageEvent, Message
@@ -21,9 +16,9 @@ jsonname = "data/saying/mappings.json"
 checkexdir = os.path.exists(jsonpath)
 if checkexdir == False:
    os.makedirs(jsonpath)
-   startdata={'Plugin':'Created by MYHZZD'}
+   startdata = {'Plugin': 'Created by MYHZZD'}
    with open(jsonname, "w", encoding='utf8') as writejson:
-        json.dump(startdata, writejson, ensure_ascii=False)
+       json.dump(startdata, writejson, ensure_ascii=False)
 
 
 def download_img(img_url, gid, img_name):
@@ -41,11 +36,12 @@ def download_img(img_url, gid, img_name):
         open(filename, 'wb').write(r.content)
     del r
 
-def mapping_table(gid,uid, img_name,who_said):
+
+def mapping_table(gid, uid, img_name, who_said):
     unixtime = str(int(round(time.time() * 1000)))
-    data_1={'Added By':uid,'Group':gid,'Picture ID':img_name}
-    data_2={'Who':who_said,'Data':data_1}
-    data_3={unixtime:data_2}
+    data_1 = {'Added By': uid, 'Group': gid, 'Picture ID': img_name}
+    data_2 = {'Who': who_said, 'Data': data_1}
+    data_3 = {unixtime: data_2}
     with open(jsonname, "r", encoding='utf8') as readfile:
         jsondata: str = readfile.read()
         mappings = json.loads(jsondata)
@@ -61,24 +57,19 @@ matcher = on_command("名言")
 async def _(event: GroupMessageEvent, Mes: Message = CommandArg()):
     gid = str(event.group_id)
     uid = str(event.user_id)
-    
-    Arg_str: str = str(Mes)
-    if Arg_str == '':
-        return
-    Arg_list = Arg_str.split()
-    who_said = Arg_list[0]
-    if who_said.replace('.\\', ' ') != who_said or who_said.replace('./', ' ') != who_said:
-        await matcher.send('输入非法字符!参数不能带有 / \ . 等符号')
-        return
+
+    for arg in Mes:
+        if arg.type == 'text':
+            who_said = str(arg)
 
     for arg in Mes:
         if arg.type == 'image':
             img_url: str = arg.data['url']
             img_name: str = arg.data['file']
             download_img(img_url, gid, img_name)
-            mapping_table(gid,uid, img_name,who_said)
+            mapping_table(gid, uid, img_name, who_said)
 
-    await matcher.send(img_name)
+    await matcher.send("已记录"+who_said)
 
 
 matcher = on_message(priority=99)
