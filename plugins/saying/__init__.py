@@ -50,6 +50,22 @@ def mapping_table(gid, uid, img_name, who_said):
     with open(jsonname, "w", encoding='utf8') as writejson:
         json.dump(mappings, writejson, ensure_ascii=False)
 
+def mapping_table_del(img_name, who_del,gid):
+    with open(jsonname, "r", encoding='utf8') as readfile:
+        jsondata: str = readfile.read()
+        mappings = json.loads(jsondata)
+        
+    for Key in mappings:
+        if Key != 'Plugin':
+           Data = mappings[Key]
+           Data_2 = Data['Data']
+           if img_name == Data_2['Picture ID'] and gid == Data_2['Group']:
+               deldata = {'Del by':who_del}
+               Data_2.update(deldata)
+    with open(jsonname, "w", encoding='utf8') as writejson:
+        json.dump(mappings, writejson, ensure_ascii=False)
+
+
 
 matcher = on_command("名言")
 
@@ -71,7 +87,22 @@ async def _(event: GroupMessageEvent, Mes: Message = CommandArg()):
             mapping_table(gid, uid, img_name, who_said)
 
     await matcher.send("已记录")
+    
+matcher = on_command("名言删除")
 
+
+@matcher.handle()
+async def _(event: GroupMessageEvent, Mes: Message = CommandArg()):
+    gid = str(event.group_id)
+    uid = str(event.user_id)
+
+    for arg in Mes:
+        if arg.type == 'image':
+            img_name: str = arg.data['file']
+            mapping_table_del(img_name,uid,gid)
+    
+    await matcher.send("已删除"+img_name+"请确保此为想删除的原图哦")
+            
 
 matcher = on_message(priority=99)
 
@@ -90,8 +121,10 @@ async def _(event: GroupMessageEvent, Message: str = EventPlainText()):
                 if Key != 'Plugin':
                     Data = mappings[Key]
                     Data_2 = Data['Data']
-                    if Message in Data['Who'] and gid == Data_2['Group']:
+                    if Message in Data['Who'] and gid == Data_2['Group'] and 'Del by' not in Data_2.keys():
                        pic.append(str(Data_2['Picture ID']))
+            if len(pic) == 0:
+                return
             num = random.randint(0, len(pic)-1)
             img_path = f"/root/ArcBot/data/saying/"+gid+"/"+pic[num]
             Msg = MessageSegment.image(f'file://{img_path}')
