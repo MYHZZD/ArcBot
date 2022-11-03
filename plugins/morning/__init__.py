@@ -24,7 +24,7 @@ if checkdoc == False:
 
 
 async def morning():
-    await asyncio.sleep(random.randint(1, 10))
+    await asyncio.sleep(random.randint(1, 5))
     with open("data/Morning/group.json", "r", encoding='utf8') as readgroup:
         jsondata: str = readgroup.read()
         groupdata = json.loads(jsondata)
@@ -33,12 +33,13 @@ async def morning():
     for i in range(len(grouplist)):
         if i != 0:
             await get_bot().send_group_msg(group_id=grouplist[i], message="早上好喵~新的一天也要开开心心喵~")
+            await asyncio.sleep(random.randint(1, 5))
 
 scheduler.add_job(morning, "cron", hour="7", minute="0", id="morning")
 
 
 async def noon():
-    await asyncio.sleep(random.randint(1, 10))
+    await asyncio.sleep(random.randint(1, 5))
     with open("data/Morning/group.json", "r", encoding='utf8') as readgroup:
         jsondata: str = readgroup.read()
         groupdata = json.loads(jsondata)
@@ -47,12 +48,13 @@ async def noon():
     for i in range(len(grouplist)):
         if i != 0:
             await get_bot().send_group_msg(group_id=grouplist[i], message="午安喵~该吃午饭了喵~")
+            await asyncio.sleep(random.randint(1, 5))
 
 scheduler.add_job(noon, "cron", hour="11", minute="30", id="noon")
 
 
 async def evening():
-    await asyncio.sleep(random.randint(1, 10))
+    await asyncio.sleep(random.randint(1, 5))
     with open("data/Morning/group.json", "r", encoding='utf8') as readgroup:
         jsondata: str = readgroup.read()
         groupdata = json.loads(jsondata)
@@ -61,6 +63,7 @@ async def evening():
     for i in range(len(grouplist)):
         if i != 0:
             await get_bot().send_group_msg(group_id=grouplist[i], message="十二点了喵，大家要早睡早起喵~")
+            await asyncio.sleep(random.randint(1, 5))
 
 scheduler.add_job(evening, "cron", hour="0", minute="0", id="evening")
 

@@ -16,10 +16,10 @@ jsonpath = "data/saying/"
 jsonname = "data/saying/mappings.json"
 checkexdir = os.path.exists(jsonpath)
 if checkexdir == False:
-   os.makedirs(jsonpath)
-   startdata = {'Plugin': 'Created by MYHZZD'}
-   with open(jsonname, "w", encoding='utf8') as writejson:
-       json.dump(startdata, writejson, ensure_ascii=False)
+    os.makedirs(jsonpath)
+    startdata = {'Plugin': 'Created by MYHZZD'}
+    with open(jsonname, "w", encoding='utf8') as writejson:
+        json.dump(startdata, writejson, ensure_ascii=False)
 
 
 def download_img(img_url, gid, img_name):
@@ -40,7 +40,8 @@ def download_img(img_url, gid, img_name):
 
 def mapping_table(gid, uid, img_name, who_said):
     unixtime = str(int(round(time.time() * 1000)))
-    data_1 = {'Added By': uid, 'Group': gid, 'Picture ID': img_name}
+    data_1 = {'Added By': uid, 'Group': gid,
+              'Picture ID': img_name, 'Have sent': 'False'}
     data_2 = {'Who': who_said, 'Data': data_1}
     data_3 = {unixtime: data_2}
     with open(jsonname, "r", encoding='utf8') as readfile:
@@ -50,21 +51,21 @@ def mapping_table(gid, uid, img_name, who_said):
     with open(jsonname, "w", encoding='utf8') as writejson:
         json.dump(mappings, writejson, ensure_ascii=False)
 
-def mapping_table_del(img_name, who_del,gid):
+
+def mapping_table_del(img_name, who_del, gid):
     with open(jsonname, "r", encoding='utf8') as readfile:
         jsondata: str = readfile.read()
         mappings = json.loads(jsondata)
-        
+
     for Key in mappings:
         if Key != 'Plugin':
-           Data = mappings[Key]
-           Data_2 = Data['Data']
-           if img_name == Data_2['Picture ID'] and gid == Data_2['Group']:
-               deldata = {'Del by':who_del}
-               Data_2.update(deldata)
+            Data = mappings[Key]
+            Data_2 = Data['Data']
+            if img_name == Data_2['Picture ID'] and gid == Data_2['Group']:
+                deldata = {'Del by': who_del}
+                Data_2.update(deldata)
     with open(jsonname, "w", encoding='utf8') as writejson:
         json.dump(mappings, writejson, ensure_ascii=False)
-
 
 
 matcher = on_command("名言")
@@ -87,7 +88,7 @@ async def _(event: GroupMessageEvent, Mes: Message = CommandArg()):
             mapping_table(gid, uid, img_name, who_said)
 
     await matcher.send("已记录")
-    
+
 matcher = on_command("名言删除")
 
 
@@ -99,10 +100,10 @@ async def _(event: GroupMessageEvent, Mes: Message = CommandArg()):
     for arg in Mes:
         if arg.type == 'image':
             img_name: str = arg.data['file']
-            mapping_table_del(img_name,uid,gid)
-    
-    await matcher.send("已删除"+img_name+"请确保此为想删除的原图哦")
-            
+            mapping_table_del(img_name, uid, gid)
+
+    await matcher.send("已删除"+img_name+",请确保此为想删除的原图哦")
+
 
 matcher = on_message(priority=99)
 
@@ -116,16 +117,38 @@ async def _(event: GroupMessageEvent, Message: str = EventPlainText()):
             jsondata: str = readfile.read()
             mappings = json.loads(jsondata)
 
-            pic = []
+        pic = []
+        for Key in mappings:
+            if Key != 'Plugin':
+                Data = mappings[Key]
+                Data_2 = Data['Data']
+                if Message in Data['Who'] and gid == Data_2['Group'] and 'False' == Data_2['Have sent'] and 'Del by' not in Data_2.keys():
+                    pic.append(str(Data_2['Picture ID']))
+        if len(pic) == 0:
+            return
+        num = random.randint(0, len(pic)-1)
+        img_path = f"/root/ArcBot/data/saying/"+gid+"/"+pic[num]
+        Msg = MessageSegment.image(f'file://{img_path}')
+        await matcher.send(Msg)
+
+        have_sent_num = 0
+        havent_sent_num = 0
+        for Key in mappings:
+            if Key != 'Plugin':
+                Data = mappings[Key]
+                Data_2 = Data['Data']
+                if Message in Data['Who'] and gid == Data_2['Group'] and pic[num] == Data_2['Picture ID']:
+                    Data_2['Have sent'] = 'True'
+                if Message in Data['Who'] and gid == Data_2['Group'] and Data_2['Have sent'] == 'True' and 'Del by' not in Data_2.keys():
+                    have_sent_num += 1
+                if Message in Data['Who'] and gid == Data_2['Group'] and Data_2['Have sent'] == 'False' and 'Del by' not in Data_2.keys():
+                    havent_sent_num += 1
+        if havent_sent_num == 0 and have_sent_num > 0:
             for Key in mappings:
                 if Key != 'Plugin':
                     Data = mappings[Key]
                     Data_2 = Data['Data']
-                    if Message in Data['Who'] and gid == Data_2['Group'] and 'Del by' not in Data_2.keys():
-                       pic.append(str(Data_2['Picture ID']))
-            if len(pic) == 0:
-                return
-            num = random.randint(0, len(pic)-1)
-            img_path = f"/root/ArcBot/data/saying/"+gid+"/"+pic[num]
-            Msg = MessageSegment.image(f'file://{img_path}')
-            await matcher.send(Msg)
+                    if Message in Data['Who'] and gid == Data_2['Group']:
+                        Data_2['Have sent'] = 'False'
+        with open(jsonname, "w", encoding='utf8') as writejson:
+            json.dump(mappings, writejson, ensure_ascii=False)
