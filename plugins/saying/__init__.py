@@ -3,7 +3,7 @@ import time
 import json
 import os
 import random
-from nonebot import get_driver, on_message, on_command
+from nonebot import get_driver, on_message, on_command, get_bot
 from nonebot.params import EventMessage, EventPlainText, CommandArg
 from nonebot.adapters import Message
 from nonebot.adapters.onebot.v11 import GroupMessageEvent, Message, MessageSegment
@@ -80,16 +80,30 @@ async def _(event: GroupMessageEvent, Mes: Message = CommandArg()):
         if arg.type == 'text':
             who_said = str(arg)
 
-    for arg in Mes:
-        if arg.type == 'image':
-            img_url: str = arg.data['url']
-            img_name: str = arg.data['file']
-            download_img(img_url, gid, img_name)
-            mapping_table(gid, uid, img_name, who_said)
+    check = str(event.reply)
+    if check != 'None':
+        mes_id = event.reply.message_id
+        bot = get_bot()
+        mes = await bot.get_msg(message_id=mes_id)
+        mes2 = mes['message']
+        mes3 = mes2.split(',')[1]
+        img_name = mes3.partition('=')[2]
+        mes4 = mes2.split(',')[3]
+        img_url = mes4.partition('=')[2]
+        download_img(img_url, gid, img_name)
+        mapping_table(gid, uid, img_name, who_said)
+
+    if check == 'None':
+        for arg in Mes:
+            if arg.type == 'image':
+                img_url: str = arg.data['url']
+                img_name: str = arg.data['file']
+                download_img(img_url, gid, img_name)
+                mapping_table(gid, uid, img_name, who_said)
 
     await matcher.send("已记录")
 
-matcher = on_command("名言删除")
+matcher = on_command("名言图片删除")
 
 
 @matcher.handle()
@@ -124,12 +138,12 @@ async def _(event: GroupMessageEvent, Message: str = EventPlainText()):
                 Data_2 = Data['Data']
                 if Message in Data['Who'] and gid == Data_2['Group'] and 'False' == Data_2['Have sent'] and 'Del by' not in Data_2.keys():
                     pic.append(str(Data_2['Picture ID']))
-        if len(pic) == 0:
-            return
-        num = random.randint(0, len(pic)-1)
-        img_path = f"/root/ArcBot/data/saying/"+gid+"/"+pic[num]
-        Msg = MessageSegment.image(f'file://{img_path}')
-        await matcher.send(Msg)
+        if len(pic) != 0:
+            num = random.randint(0, len(pic)-1)
+            img_path = f"/root/ArcBot/data/saying/"+gid+"/"+pic[num]
+            Msg = MessageSegment.image(f'file://{img_path}')
+            await matcher.send(Msg)
+            
 
         have_sent_num = 0
         havent_sent_num = 0
@@ -137,8 +151,9 @@ async def _(event: GroupMessageEvent, Message: str = EventPlainText()):
             if Key != 'Plugin':
                 Data = mappings[Key]
                 Data_2 = Data['Data']
-                if Message in Data['Who'] and gid == Data_2['Group'] and pic[num] == Data_2['Picture ID']:
-                    Data_2['Have sent'] = 'True'
+                if len(pic) != 0:
+                    if Message in Data['Who'] and gid == Data_2['Group'] and pic[num] == Data_2['Picture ID']:
+                        Data_2['Have sent'] = 'True'
                 if Message in Data['Who'] and gid == Data_2['Group'] and Data_2['Have sent'] == 'True' and 'Del by' not in Data_2.keys():
                     have_sent_num += 1
                 if Message in Data['Who'] and gid == Data_2['Group'] and Data_2['Have sent'] == 'False' and 'Del by' not in Data_2.keys():
@@ -152,3 +167,26 @@ async def _(event: GroupMessageEvent, Message: str = EventPlainText()):
                         Data_2['Have sent'] = 'False'
         with open(jsonname, "w", encoding='utf8') as writejson:
             json.dump(mappings, writejson, ensure_ascii=False)
+
+
+matcher = on_command("名言删除")
+
+
+@matcher.handle()
+async def _(event: GroupMessageEvent):
+    gid = str(event.group_id)
+    uid = str(event.user_id)
+
+    check = str(event.reply)
+    if check != 'None':
+        mes_id = event.reply.message_id
+        bot = get_bot()
+        mes = await bot.get_msg(message_id=mes_id)
+        mes2 = mes['message']
+        mes3 = mes2.split(',')[1]
+        img_name = mes3.partition('=')[2]
+        mapping_table_del(img_name, uid, gid)
+
+        img_path = f"/root/ArcBot/data/saying/"+gid+"/"+img_name
+        Msg = MessageSegment.image(f'file://{img_path}')
+        await matcher.send("已删除"+Msg+",请确保此为想删除的原图哦")
