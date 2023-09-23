@@ -11,6 +11,8 @@ matcher = on_message(priority=99)
 @matcher.handle()
 async def _(event: GroupMessageEvent, tag: str = EventPlainText()):
     tag = tag.replace("\r\n", "\n")
+    tag = tag.replace("(", "\(")
+    tag = tag.replace(")", "\)")
     if ("M\n? " in tag) | ("k\n? " in tag):
         tag_list = tag.split("\n")
         tag_all = ""
