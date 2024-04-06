@@ -84,12 +84,10 @@ async def _(event: GroupMessageEvent, Mes: Message = CommandArg()):
     if check != 'None':
         mes_id = event.reply.message_id
         bot = get_bot()
-        mes = await bot.get_msg(message_id=mes_id)
-        mes2 = mes['message']
-        mes3 = mes2.split(',')[1]
-        img_name = mes3.partition('=')[2]
-        mes4 = mes2.split(',')[3]
-        img_url = mes4.partition('=')[2]
+        r_mes = await bot.get_msg(message_id=mes_id)
+        #print(r_mes)
+        img_url: str = r_mes['message'][0]['data']['url']
+        img_name: str = r_mes['message'][0]['data']['file']
         download_img(img_url, gid, img_name)
         mapping_table(gid, uid, img_name, who_said)
 
@@ -141,7 +139,9 @@ async def _(event: GroupMessageEvent, Message: str = EventPlainText()):
         if len(pic) != 0:
             num = random.randint(0, len(pic)-1)
             img_path = f"/root/ArcBot/data/saying/"+gid+"/"+pic[num]
-            Msg = MessageSegment.image(f'file://{img_path}')
+            with open(img_path, 'rb') as f:
+                bytes_img = f.read()
+            Msg = MessageSegment.image(bytes_img)
             await matcher.send(Msg)
             
 
@@ -181,12 +181,12 @@ async def _(event: GroupMessageEvent):
     if check != 'None':
         mes_id = event.reply.message_id
         bot = get_bot()
-        mes = await bot.get_msg(message_id=mes_id)
-        mes2 = mes['message']
-        mes3 = mes2.split(',')[1]
-        img_name = mes3.partition('=')[2]
+        r_mes = await bot.get_msg(message_id=mes_id)
+        img_name: str = r_mes['message'][0]['data']['file']
         mapping_table_del(img_name, uid, gid)
 
         img_path = f"/root/ArcBot/data/saying/"+gid+"/"+img_name
-        Msg = MessageSegment.image(f'file://{img_path}')
+        with open(img_path, 'rb') as f:
+             bytes_img = f.read()
+        Msg = MessageSegment.image(bytes_img)
         await matcher.send("已删除"+Msg+",请确保此为想删除的原图哦")
