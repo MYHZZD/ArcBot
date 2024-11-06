@@ -8,9 +8,9 @@ from nonebot.params import EventMessage, EventPlainText, CommandArg
 from nonebot.adapters import Message
 from nonebot.adapters.onebot.v11 import GroupMessageEvent, Message, MessageSegment
 
-from .config import Config
-global_config = get_driver().config
-config = Config.parse_obj(global_config)
+import requests.packages.urllib3.util.ssl_
+requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS = 'ALL'
+
 
 jsonpath = "data/saying/"
 jsonname = "data/saying/mappings.json"
@@ -78,18 +78,18 @@ async def _(event: GroupMessageEvent, Mes: Message = CommandArg()):
 
     for arg in Mes:
         if arg.type == 'text':
-            who_said = str(arg)
+            who_said = str(arg).strip()
 
     check = str(event.reply)
     if check != 'None':
         mes_id = event.reply.message_id
         bot = get_bot()
-        mes = await bot.get_msg(message_id=mes_id)
-        mes2 = mes['message']
-        mes3 = mes2.split(',')[1]
-        img_name = mes3.partition('=')[2]
-        mes4 = mes2.split(',')[3]
-        img_url = mes4.partition('=')[2]
+        r_mes = await bot.get_msg(message_id=mes_id)
+        #print(r_mes)
+        img_url: str = r_mes['message'][0]['data']['url']
+        img_name: str = r_mes['message'][0]['data']['file']
+        print(img_url)
+        print(img_name)
         download_img(img_url, gid, img_name)
         mapping_table(gid, uid, img_name, who_said)
 
@@ -98,28 +98,15 @@ async def _(event: GroupMessageEvent, Mes: Message = CommandArg()):
             if arg.type == 'image':
                 img_url: str = arg.data['url']
                 img_name: str = arg.data['file']
+                print(img_url)
+                print(img_name)
                 download_img(img_url, gid, img_name)
                 mapping_table(gid, uid, img_name, who_said)
 
     await matcher.send("已记录")
 
-matcher = on_command("名言图片删除")
 
-
-@matcher.handle()
-async def _(event: GroupMessageEvent, Mes: Message = CommandArg()):
-    gid = str(event.group_id)
-    uid = str(event.user_id)
-
-    for arg in Mes:
-        if arg.type == 'image':
-            img_name: str = arg.data['file']
-            mapping_table_del(img_name, uid, gid)
-
-    await matcher.send("已删除"+img_name+",请确保此为想删除的原图哦")
-
-
-matcher = on_message(priority=99)
+matcher = on_message(priority=99) #回复
 
 
 @matcher.handle()
@@ -140,8 +127,11 @@ async def _(event: GroupMessageEvent, Message: str = EventPlainText()):
                     pic.append(str(Data_2['Picture ID']))
         if len(pic) != 0:
             num = random.randint(0, len(pic)-1)
-            img_path = f"/root/ArcBot/data/saying/"+gid+"/"+pic[num]
-            Msg = MessageSegment.image(f'file://{img_path}')
+            img_path = f"data/saying/"+gid+"/"+pic[num]
+            print(img_path)
+            with open(img_path, 'rb') as f:
+                bytes_img = f.read()
+            Msg = MessageSegment.image(bytes_img)
             await matcher.send(Msg)
             
 
@@ -181,12 +171,31 @@ async def _(event: GroupMessageEvent):
     if check != 'None':
         mes_id = event.reply.message_id
         bot = get_bot()
-        mes = await bot.get_msg(message_id=mes_id)
-        mes2 = mes['message']
-        mes3 = mes2.split(',')[1]
-        img_name = mes3.partition('=')[2]
+        r_mes = await bot.get_msg(message_id=mes_id)
+        img_name: str = r_mes['message'][0]['data']['file']
+        print(img_name)
         mapping_table_del(img_name, uid, gid)
 
-        img_path = f"/root/ArcBot/data/saying/"+gid+"/"+img_name
-        Msg = MessageSegment.image(f'file://{img_path}')
+        img_path = f"data/saying/"+gid+"/"+img_name
+        with open(img_path, 'rb') as f:
+             bytes_img = f.read()
+        Msg = MessageSegment.image(bytes_img)
         await matcher.send("已删除"+Msg+",请确保此为想删除的原图哦")
+
+
+'''
+matcher = on_command("名言图片删除")
+
+
+@matcher.handle()
+async def _(event: GroupMessageEvent, Mes: Message = CommandArg()):
+    gid = str(event.group_id)
+    uid = str(event.user_id)
+
+    for arg in Mes:
+        if arg.type == 'image':
+            img_name: str = arg.data['file']
+            mapping_table_del(img_name, uid, gid)
+
+    await matcher.send("已删除"+img_name+",请确保此为想删除的原图哦")
+'''

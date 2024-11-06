@@ -7,9 +7,6 @@ from nonebot.params import EventPlainText, Command, CommandArg
 from nonebot.adapters import Message
 from nonebot.adapters.onebot.v11 import GroupMessageEvent
 
-from .config import Config
-global_config = get_driver().config
-config = Config.parse_obj(global_config)
 
 matcher = on_command("课程添加")
 

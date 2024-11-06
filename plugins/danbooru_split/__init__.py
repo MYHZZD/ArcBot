@@ -1,9 +1,7 @@
 from nonebot import get_driver, on_message
 from nonebot.params import EventPlainText
 from nonebot.adapters.onebot.v11 import GroupMessageEvent
-from .config import Config
-global_config = get_driver().config
-config = Config.parse_obj(global_config)
+
 
 matcher = on_message(priority=99)
 
@@ -11,6 +9,8 @@ matcher = on_message(priority=99)
 @matcher.handle()
 async def _(event: GroupMessageEvent, tag: str = EventPlainText()):
     tag = tag.replace("\r\n", "\n")
+    tag = tag.replace("(", "\(")
+    tag = tag.replace(")", "\)")
     if ("M\n? " in tag) | ("k\n? " in tag):
         tag_list = tag.split("\n")
         tag_all = ""
