@@ -129,6 +129,7 @@ async def _(event: GroupMessageEvent, Message: str = EventPlainText()):
 
         if gid not in GGID:
             pic = []
+            picc = 0
             for Key in mappings:
                 if Key != "Plugin":
                     Data = mappings[Key]
@@ -136,10 +137,11 @@ async def _(event: GroupMessageEvent, Message: str = EventPlainText()):
                     if (
                         Message in Data["Who"]
                         and gid == Data_2["Group"]
-                        and "False" == Data_2["Have sent"]
                         and "Del by" not in Data_2.keys()
                     ):
-                        pic.append(str(Data_2["Picture ID"]))
+                        picc += 1
+                        if "False" == Data_2["Have sent"]:
+                            pic.append(str(Data_2["Picture ID"]))
             if len(pic) != 0:
                 num = random.randint(0, len(pic) - 1)
                 img_path = f"data/saying/" + gid + "/" + pic[num]
@@ -160,29 +162,29 @@ async def _(event: GroupMessageEvent, Message: str = EventPlainText()):
                         ):
                             Data_2["Have sent"] = "True"
                             break
-                if len(pic) == 1:
-                    for Key in mappings:
-                        if Key != "Plugin":
-                            Data = mappings[Key]
-                            Data_2 = Data["Data"]
-                            if Message in Data["Who"] and gid == Data_2["Group"]:
-                                Data_2["Have sent"] = "False"
+            if (len(pic) == 1) or (len(pic) == 0 and picc > 0):
+                for Key in mappings:
+                    if Key != "Plugin":
+                        Data = mappings[Key]
+                        Data_2 = Data["Data"]
+                        if Message in Data["Who"] and gid == Data_2["Group"]:
+                            Data_2["Have sent"] = "False"
+            if (len(pic) != 0) or (len(pic) == 0 and picc > 0):
                 with open(jsonname, "w", encoding="utf8") as writejson:
                     json.dump(mappings, writejson, ensure_ascii=False)
         else:
             pic = []
             gls = []
+            picc = 0
             for Key in mappings:
                 if Key != "Plugin":
                     Data = mappings[Key]
                     Data_2 = Data["Data"]
-                    if (
-                        Message in Data["Who"]
-                        and "False" == Data_2["Have sent"]
-                        and "Del by" not in Data_2.keys()
-                    ):
-                        pic.append(str(Data_2["Picture ID"]))
-                        gls.append(str(Data_2["Group"]))
+                    if Message in Data["Who"] and "Del by" not in Data_2.keys():
+                        picc += 1
+                        if "False" == Data_2["Have sent"]:
+                            pic.append(str(Data_2["Picture ID"]))
+                            gls.append(str(Data_2["Group"]))
             if len(pic) != 0:
                 num = random.randint(0, len(pic) - 1)
                 img_path = f"data/saying/" + gls[num] + "/" + pic[num]
@@ -203,13 +205,14 @@ async def _(event: GroupMessageEvent, Message: str = EventPlainText()):
                         ):
                             Data_2["Have sent"] = "True"
                             break
-                if len(pic) == 1:
-                    for Key in mappings:
-                        if Key != "Plugin":
-                            Data = mappings[Key]
-                            Data_2 = Data["Data"]
-                            if Message in Data["Who"]:
-                                Data_2["Have sent"] = "False"
+            if (len(pic) == 1) or (len(pic) == 0 and picc > 0):
+                for Key in mappings:
+                    if Key != "Plugin":
+                        Data = mappings[Key]
+                        Data_2 = Data["Data"]
+                        if Message in Data["Who"]:
+                            Data_2["Have sent"] = "False"
+            if (len(pic) != 0) or (len(pic) == 0 and picc > 0):
                 with open(jsonname, "w", encoding="utf8") as writejson:
                     json.dump(mappings, writejson, ensure_ascii=False)
 
