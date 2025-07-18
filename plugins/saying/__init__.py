@@ -71,7 +71,7 @@ def mapping_table_del(img_name, who_del):
             if img_name == Data_2["Picture ID"]:
                 deldata = {"Del by": who_del}
                 Data_2.update(deldata)
-                gid = Data_2["Group"] #返回群号，如果没有匹配则返回0
+                gid = Data_2["Group"]  # 返回群号，如果没有匹配则返回0
     with open(jsonname, "w", encoding="utf8") as writejson:
         json.dump(mappings, writejson, ensure_ascii=False)
     return gid
@@ -127,7 +127,6 @@ async def _(event: GroupMessageEvent, Message: str = EventPlainText()):
             jsondata: str = readfile.read()
             mappings = json.loads(jsondata)
 
-        print(GGID)
         if gid not in GGID:
             pic = []
             for Key in mappings:
@@ -150,42 +149,26 @@ async def _(event: GroupMessageEvent, Message: str = EventPlainText()):
                 Msg = MessageSegment.image(bytes_img)
                 await matcher.send(Msg)
 
-            have_sent_num = 0
-            havent_sent_num = 0
-            for Key in mappings:
-                if Key != "Plugin":
-                    Data = mappings[Key]
-                    Data_2 = Data["Data"]
-                    if len(pic) != 0:
+                for Key in mappings:
+                    if Key != "Plugin":
+                        Data = mappings[Key]
+                        Data_2 = Data["Data"]
                         if (
                             Message in Data["Who"]
                             and gid == Data_2["Group"]
                             and pic[num] == Data_2["Picture ID"]
                         ):
                             Data_2["Have sent"] = "True"
-                    if (
-                        Message in Data["Who"]
-                        and gid == Data_2["Group"]
-                        and Data_2["Have sent"] == "True"
-                        and "Del by" not in Data_2.keys()
-                    ):
-                        have_sent_num += 1
-                    if (
-                        Message in Data["Who"]
-                        and gid == Data_2["Group"]
-                        and Data_2["Have sent"] == "False"
-                        and "Del by" not in Data_2.keys()
-                    ):
-                        havent_sent_num += 1
-            if havent_sent_num == 0 and have_sent_num > 0:
-                for Key in mappings:
-                    if Key != "Plugin":
-                        Data = mappings[Key]
-                        Data_2 = Data["Data"]
-                        if Message in Data["Who"] and gid == Data_2["Group"]:
-                            Data_2["Have sent"] = "False"
-            with open(jsonname, "w", encoding="utf8") as writejson:
-                json.dump(mappings, writejson, ensure_ascii=False)
+                            break
+                if len(pic) == 1:
+                    for Key in mappings:
+                        if Key != "Plugin":
+                            Data = mappings[Key]
+                            Data_2 = Data["Data"]
+                            if Message in Data["Who"] and gid == Data_2["Group"]:
+                                Data_2["Have sent"] = "False"
+                with open(jsonname, "w", encoding="utf8") as writejson:
+                    json.dump(mappings, writejson, ensure_ascii=False)
         else:
             pic = []
             gls = []
@@ -199,50 +182,36 @@ async def _(event: GroupMessageEvent, Message: str = EventPlainText()):
                         and "Del by" not in Data_2.keys()
                     ):
                         pic.append(str(Data_2["Picture ID"]))
-                        gls.append(int(Data_2["Group"]))
+                        gls.append(str(Data_2["Group"]))
             if len(pic) != 0:
                 num = random.randint(0, len(pic) - 1)
-                img_path = f"data/saying/" + str(gls[num]) + "/" + pic[num]
+                img_path = f"data/saying/" + gls[num] + "/" + pic[num]
                 print(img_path)
                 with open(img_path, "rb") as f:
                     bytes_img = f.read()
                 Msg = MessageSegment.image(bytes_img)
                 await matcher.send(Msg)
 
-            have_sent_num = 0
-            havent_sent_num = 0
-            for Key in mappings:
-                if Key != "Plugin":
-                    Data = mappings[Key]
-                    Data_2 = Data["Data"]
-                    if len(pic) != 0:
-                        if (
-                            Message in Data["Who"]
-                            and gls[num] == int(Data_2["Group"])
-                            and pic[num] == Data_2["Picture ID"]
-                        ):
-                            Data_2["Have sent"] = "True"
-                    if (
-                        Message in Data["Who"]
-                        and Data_2["Have sent"] == "True"
-                        and "Del by" not in Data_2.keys()
-                    ):
-                        have_sent_num += 1
-                    if (
-                        Message in Data["Who"]
-                        and Data_2["Have sent"] == "False"
-                        and "Del by" not in Data_2.keys()
-                    ):
-                        havent_sent_num += 1
-            if havent_sent_num == 0 and have_sent_num > 0:
                 for Key in mappings:
                     if Key != "Plugin":
                         Data = mappings[Key]
                         Data_2 = Data["Data"]
-                        if Message in Data["Who"]:
-                            Data_2["Have sent"] = "False"
-            with open(jsonname, "w", encoding="utf8") as writejson:
-                json.dump(mappings, writejson, ensure_ascii=False)
+                        if (
+                            Message in Data["Who"]
+                            and gls[num] == Data_2["Group"]
+                            and pic[num] == Data_2["Picture ID"]
+                        ):
+                            Data_2["Have sent"] = "True"
+                            break
+                if len(pic) == 1:
+                    for Key in mappings:
+                        if Key != "Plugin":
+                            Data = mappings[Key]
+                            Data_2 = Data["Data"]
+                            if Message in Data["Who"]:
+                                Data_2["Have sent"] = "False"
+                with open(jsonname, "w", encoding="utf8") as writejson:
+                    json.dump(mappings, writejson, ensure_ascii=False)
 
 
 matcher = on_command("名言删除")
@@ -258,7 +227,7 @@ async def _(event: GroupMessageEvent):
         bot = get_bot()
         r_mes = await bot.get_msg(message_id=mes_id)
         img_name: str = r_mes["message"][0]["data"]["file"]
-        # print(img_name)
+        print(img_name)
         delgid = mapping_table_del(img_name, uid)
 
         if delgid != 0:
