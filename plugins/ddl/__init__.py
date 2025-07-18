@@ -87,9 +87,11 @@ def parse_date(date_str):
     if m := re.match(r"^(本周|下周|下下周)([一二三四五六日天])$", date_str):
         base = {"本周": 0, "下周": 1, "下下周": 2}[m[1]]
         weekday = weekday_map[m[2]]
-        # 找到本周一（即使今天不是周一）
+        # 找到本周一
         monday_this_week = now - timedelta(days=now.weekday())
-        return (monday_this_week + relativedelta(weeks=base, weekday=weekday(+1))).date()
+        return (
+            monday_this_week + relativedelta(weeks=base, weekday=weekday(+1))
+        ).date()
 
     if m := re.match(r"^(今天|明天|后天|大后天)$", date_str):
         days = {"今天": 0, "明天": 1, "后天": 2, "大后天": 3}[m[1]]
@@ -101,8 +103,8 @@ def parse_date(date_str):
 def check_time(unixtime, now):
     dt_target = datetime.fromtimestamp(unixtime)
 
-    # 要求目标时间必须大于现在时间
-    if dt_target <= now:
+    # 要求目标时间必须大于现在时间，五分钟余量
+    if dt_target + TOLERANCE <= now:
         return "none", 0
 
     for y in range(1, 5):

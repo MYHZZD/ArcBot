@@ -84,9 +84,11 @@ if __name__ == "__main__":
     print("开始分析记录...")
     analyze_records()
 
+'''
     # 示例：迁移记录
     source_group = "733968766"  # 源群组ID
     target_group = "863388869"  # 目标群组ID
     who_said = "裙友说过"    # 要迁移的“某人说过”
     print(f"\n开始迁移记录：{who_said} 从群组 {source_group} 到 {target_group}")
     migrate_records(source_group, target_group, who_said)
+'''
