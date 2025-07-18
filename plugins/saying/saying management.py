@@ -13,6 +13,12 @@ def analyze_records():
 
     # 统计每个群组中每个人的记录数量
     group_stats = {}
+    
+    # 存储图片在群内的使用情况 {picture_id: {group_id: count}}
+    same_group_duplicates = {}
+    # 存储图片在跨群的使用情况 {picture_id: set(group_ids)}
+    cross_group_duplicates = {}
+
     for timestamp, record in mappings.items():
         if timestamp == "Plugin":
             continue
@@ -35,12 +41,59 @@ def analyze_records():
         if not os.path.exists(image_path):
             group_stats[group_id][who_said]["missing_images"] += 1
 
-    # 输出统计结果
+        # 1. 检测同群重复
+        if group_id not in same_group_duplicates:
+            same_group_duplicates[group_id] = {}
+        
+        if picture_id not in same_group_duplicates[group_id]:
+            same_group_duplicates[group_id][picture_id] = 1
+        else:
+            same_group_duplicates[group_id][picture_id] += 1
+        
+        # 2. 检测跨群重复
+        if picture_id not in cross_group_duplicates:
+            cross_group_duplicates[picture_id] = set()
+        cross_group_duplicates[picture_id].add(group_id)
+
+    # 输出原始统计结果
+    print("=" * 50)
+    print("基础统计信息：")
     for group_id, stats in group_stats.items():
         print(f"群组 {group_id} 的记录统计：")
         for who_said, data in stats.items():
             print(f"  - {who_said}: 总记录数={data['total']}, 缺失图片数={data['missing_images']}")
         print()
+    
+    print("=" * 50)
+    print("重复图片检测报告：")
+    
+    # 1. 输出同群重复情况
+    same_group_found = False
+    for group_id, pictures in same_group_duplicates.items():
+        for pic_id, count in pictures.items():
+            if count > 1:
+                if not same_group_found:
+                    print("\n同群重复图片（同一图片在同一个群内添加多次）：")
+                    same_group_found = True
+                print(f"  图片 '{pic_id}' 在群组 {group_id} 中重复添加了 {count} 次")
+    
+    if not same_group_found:
+        print("\n未发现同群重复图片")
+    
+    # 2. 输出跨群重复情况
+    cross_group_found = False
+    for pic_id, groups in cross_group_duplicates.items():
+        if len(groups) > 1:
+            if not cross_group_found:
+                print("\n跨群重复图片（同一图片在多个群组中使用）：")
+                cross_group_found = True
+            group_list = ", ".join(groups)
+            print(f"  图片 '{pic_id}' 在 {len(groups)} 个群组中使用: [{group_list}]")
+    
+    if not cross_group_found:
+        print("\n未发现跨群重复图片")
+    
+    print("=" * 50)
 
 # 2. 将指定群组内“某人说过”的记录迁移至另一个群组，并迁移图片数据
 def migrate_records(source_group, target_group, who_said):
