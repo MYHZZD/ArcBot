@@ -135,7 +135,7 @@ async def _(event: GroupMessageEvent, Message: str = EventPlainText()):
                     Data = mappings[Key]
                     Data_2 = Data["Data"]
                     if (
-                        Message in Data["Who"]
+                        Message == Data["Who"]
                         and gid == Data_2["Group"]
                         and "Del by" not in Data_2.keys()
                     ):
@@ -180,7 +180,7 @@ async def _(event: GroupMessageEvent, Message: str = EventPlainText()):
                 if Key != "Plugin":
                     Data = mappings[Key]
                     Data_2 = Data["Data"]
-                    if Message in Data["Who"] and "Del by" not in Data_2.keys():
+                    if Message == Data["Who"] and "Del by" not in Data_2.keys():
                         picc += 1
                         if "False" == Data_2["Have sent"]:
                             pic.append(str(Data_2["Picture ID"]))

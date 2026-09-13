@@ -352,4 +352,5 @@ def analyze_records(perform_fix):
 
 if __name__ == "__main__":
     print("开始分析记录...")
-    analyze_records(False)
+    #analyze_records(False)
+    analyze_records(True)

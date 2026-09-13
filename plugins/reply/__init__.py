@@ -132,6 +132,8 @@ matcher = on_message(priority=99)
 async def _(mess: str = EventPlainText()):
     if mess == '老婆':
         await matcher.send('老公！')
+    if mess == '妈妈':
+        await matcher.send('宝宝！妈妈爱你')
     if mess == '和我结婚':
         await matcher.send('支持')
     if mess == '支持':
