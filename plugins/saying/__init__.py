@@ -1,241 +1,305 @@
-import requests
-import time
-import json
+"""saying：群内“XX说过”图片名言库。
+
+运行时只使用 SQLite（data/saying/saying.db），不再读写 mappings.json。
+图片仍保存在 data/saying/{group_id}/{picture_id}。
+"""
+
+from __future__ import annotations
+
+import asyncio
+import base64
+import hashlib
+import io
 import os
-import random
-from nonebot import get_driver, on_message, on_command, get_bot
-from nonebot.params import EventPlainText, CommandArg
+import sqlite3
+import time
+from pathlib import Path
+from typing import Optional
+from urllib.parse import unquote, urlparse
+
+import httpx
+from PIL import Image
+
+from nonebot import get_driver, on_command, on_message
 from nonebot.adapters import Message
-from nonebot.adapters.onebot.v11 import GroupMessageEvent, Message, MessageSegment
+from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent, MessageSegment
+from nonebot.log import logger
+from nonebot.matcher import Matcher
+from nonebot.params import CommandArg, EventPlainText
 
-import requests.packages.urllib3.util.ssl_
+from . import storage
 
-requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS = "ALL"
+FORMAT_EXT = {"JPEG": ".jpg", "PNG": ".png", "GIF": ".gif", "WEBP": ".webp"}
+MAX_IMAGE_BYTES = int(os.getenv("SAYING_MAX_IMAGE_MB", "20")) * 1024 * 1024
+DOWNLOAD_TIMEOUT = float(os.getenv("SAYING_DOWNLOAD_TIMEOUT", "30"))
+SAYING_DIR = storage.SAYING_DIR
+_pick_lock = asyncio.Lock()
 
-GGID = get_driver().config.ggid  # 全局回复群列表
+_config = get_driver().config
+GGID = {str(x) for x in (getattr(_config, "ggid", None) or [])}
 
-jsonpath = "data/saying/"
-jsonname = "data/saying/mappings.json"
-checkexdir = os.path.exists(jsonpath)
-if checkexdir == False:
-    os.makedirs(jsonpath)
-    startdata = {"Plugin": "Created by MYHZZD"}
-    with open(jsonname, "w", encoding="utf8") as writejson:
-        json.dump(startdata, writejson, ensure_ascii=False)
-
-
-def download_img(img_url, gid, img_name):
-    filepath = "data/saying/" + gid
-    checkexdir = os.path.exists(filepath)
-    if checkexdir == False:
-        os.makedirs(filepath)
-    filename = "data/saying/" + gid + "/" + img_name
-    header = {
-        "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Safari/537.36 Edg/95.0.1020.53",
-    }
-    r = requests.get(img_url, headers=header, stream=True)
-    if r.status_code == 200:
-        open(filename, "wb").write(r.content)
-    del r
+storage.init_db(create_unique=False)
+try:
+    storage.ensure_unique_index()
+except sqlite3.IntegrityError:
+    logger.warning(
+        "saying: 数据库中仍有重复记录，未创建唯一索引；请先运行 saying/admin.py --apply"
+    )
 
 
-def mapping_table(gid, uid, img_name, who_said):
-    unixtime = str(int(round(time.time() * 1000)))
-    data_1 = {
-        "Added By": uid,
-        "Group": gid,
-        "Picture ID": img_name,
-        "Have sent": "False",
-    }
-    data_2 = {"Who": who_said, "Data": data_1}
-    data_3 = {unixtime: data_2}
-    with open(jsonname, "r", encoding="utf8") as readfile:
-        jsondata: str = readfile.read()
-        mappings = json.loads(jsondata)
-    mappings.update(data_3)
-    with open(jsonname, "w", encoding="utf8") as writejson:
-        json.dump(mappings, writejson, ensure_ascii=False)
+def _is_valid_who(who: str) -> bool:
+    if not who or who != who.strip():
+        return False
+    if not who.endswith("说过"):
+        return False
+    if not (3 <= len(who) <= 30):
+        return False
+    if any(ch in who for ch in "\r\n\t/\\"):
+        return False
+    return True
 
 
-def mapping_table_del(img_name, who_del):
-    with open(jsonname, "r", encoding="utf8") as readfile:
-        jsondata: str = readfile.read()
-        mappings = json.loads(jsondata)
+async def _fetch_image(source: Optional[str]) -> bytes:
+    if not source:
+        raise ValueError("图片地址为空")
+    if source.startswith("base64://"):
+        data = base64.b64decode(source[9:])
+    elif source.startswith("file://"):
+        parsed = urlparse(source)
+        path = unquote(parsed.path)
+        if path.startswith("/") and len(path) > 2 and path[2] == ":":
+            path = path[1:]
+        data = Path(path).read_bytes()
+    elif source.startswith(("http://", "https://")):
+        async with httpx.AsyncClient(
+            timeout=DOWNLOAD_TIMEOUT, follow_redirects=True
+        ) as client:
+            resp = await client.get(source)
+            resp.raise_for_status()
+            data = resp.content
+    else:
+        path = Path(source)
+        if not path.is_file():
+            raise ValueError("无法识别的图片地址")
+        data = path.read_bytes()
 
-    gid = 0
-    for Key in mappings:
-        if Key != "Plugin":
-            Data = mappings[Key]
-            Data_2 = Data["Data"]
-            if img_name == Data_2["Picture ID"]:
-                deldata = {"Del by": who_del}
-                Data_2.update(deldata)
-                gid = Data_2["Group"]  # 返回群号，如果没有匹配则返回0
-    with open(jsonname, "w", encoding="utf8") as writejson:
-        json.dump(mappings, writejson, ensure_ascii=False)
-    return gid
+    if len(data) > MAX_IMAGE_BYTES:
+        raise ValueError(f"图片超过 {MAX_IMAGE_BYTES // 1024 // 1024} MB")
+    if not data:
+        raise ValueError("图片为空")
+    return data
 
 
-matcher = on_command("名言")
+def _validate_image(data: bytes) -> tuple[str, str, str]:
+    try:
+        with Image.open(io.BytesIO(data)) as img:
+            fmt = img.format
+            img.verify()
+    except Exception as exc:
+        raise ValueError(f"无法识别的图片: {exc}") from exc
+    ext = FORMAT_EXT.get(fmt or "")
+    if not ext:
+        raise ValueError(f"不支持的图片格式: {fmt}")
+    return fmt or "", ext, hashlib.md5(data).hexdigest().upper()
 
 
-@matcher.handle()
-async def _(event: GroupMessageEvent, Mes: Message = CommandArg()):
+def _save_image(group_id: str, md5: str, ext: str, data: bytes) -> str:
+    directory = SAYING_DIR / group_id
+    directory.mkdir(parents=True, exist_ok=True)
+    name = f"{md5}{ext}"
+    target = directory / name
+    if target.is_file():
+        if target.stat().st_size != len(data):
+            raise ValueError("同名图片内容冲突")
+        return name
+
+    tmp = directory / f".{name}.tmp"
+    tmp.write_bytes(data)
+    os.replace(tmp, target)
+    return name
+
+
+async def _get_image_from_event(
+    bot: Bot, event: GroupMessageEvent, args: Message
+) -> bytes:
+    """优先取被回复消息里的图，其次取当前消息里的图。"""
+    if event.reply is not None:
+        replied = await bot.get_msg(message_id=event.reply.message_id)
+        for seg in replied.get("message", []):
+            if seg.get("type") == "image":
+                data = seg.get("data", {})
+                return await _fetch_image(data.get("url") or data.get("file"))
+
+    for seg in args:
+        if seg.type == "image":
+            source = seg.data.get("url") or seg.data.get("file")
+            return await _fetch_image(source)
+
+    raise ValueError("请附带一张图片，或回复一张图片")
+
+
+learn = on_command("名言", priority=5, block=True)
+
+
+@learn.handle()
+async def _(
+    bot: Bot,
+    event: GroupMessageEvent,
+    matcher: Matcher,
+    args: Message = CommandArg(),
+):
+    texts = [str(seg).strip() for seg in args if seg.type == "text"]
+    who = " ".join(t for t in texts if t).strip()
+
+    if not who:
+        await matcher.finish("用法：/名言 日向说过，并附带一张图片或回复一张图片")
+    if not _is_valid_who(who):
+        await matcher.finish("名字需要是“xx说过”格式，例如：/名言 日向说过")
+
+    try:
+        data = await _get_image_from_event(bot, event, args)
+        _, ext, md5 = _validate_image(data)
+        picture_id = _save_image(str(event.group_id), md5, ext, data)
+    except Exception as exc:
+        logger.exception("名言图片处理失败")
+        await matcher.finish(f"添加失败：{exc}")
+
+    quote_id, inserted = storage.add_quote(
+        created_at=int(time.time() * 1000),
+        who=who,
+        added_by=str(event.user_id),
+        group_id=str(event.group_id),
+        picture_id=picture_id,
+        md5=md5,
+        source="runtime",
+    )
+    if inserted:
+        await matcher.finish("爱尔学会啦~")
+    await matcher.finish("这张图已经记过啦~")
+
+
+trigger = on_message(priority=99)
+
+
+@trigger.handle()
+async def _(
+    event: GroupMessageEvent,
+    matcher: Matcher,
+    text: str = EventPlainText(),
+):
+    message = text.strip()
+    if "说过" not in message:
+        return
+
     gid = str(event.group_id)
-    uid = str(event.user_id)
+    group_ids = sorted(GGID) if gid in GGID else [gid]
 
-    for arg in Mes:
-        if arg.type == "text":
-            who_said = str(arg).strip()
+    async with _pick_lock:
+        row = storage.pick_quote(group_ids, message)
+        if row is None:
+            return
 
-    check = str(event.reply)
-    if check != "None":
-        mes_id = event.reply.message_id
-        bot = get_bot()
-        r_mes = await bot.get_msg(message_id=mes_id)
-        # print(r_mes)
-        img_url: str = r_mes["message"][0]["data"]["url"]
-        img_name: str = r_mes["message"][0]["data"]["file"]
-        print(img_url)
-        print(img_name)
-        download_img(img_url, gid, img_name)
-        mapping_table(gid, uid, img_name, who_said)
+        image_path = SAYING_DIR / str(row["group_id"]) / str(row["picture_id"])
+        if not image_path.is_file():
+            logger.warning(f"名言图片不存在: {image_path}")
+            return
 
-    if check == "None":
-        for arg in Mes:
-            if arg.type == "image":
-                img_url: str = arg.data["url"]
-                img_name: str = arg.data["file"]
-                print(img_url)
-                print(img_name)
-                download_img(img_url, gid, img_name)
-                mapping_table(gid, uid, img_name, who_said)
+        storage.mark_sent(int(row["id"]))
 
-    await matcher.send("已记录")
+    try:
+        await matcher.send(MessageSegment.image(image_path.read_bytes()))
+    except Exception:
+        storage.mark_unsent(int(row["id"]))
+        logger.exception("名言发送失败")
 
 
-matcher = on_message(priority=99)  # 回复
+remove = on_command("名言删除", priority=5, block=True)
 
 
-@matcher.handle()
-async def _(event: GroupMessageEvent, Message: str = EventPlainText()):
+@remove.handle()
+async def _(
+    bot: Bot,
+    event: GroupMessageEvent,
+    matcher: Matcher,
+):
+    if event.reply is None:
+        await matcher.finish("请回复要删除的名言图片")
+
+    replied = await bot.get_msg(message_id=event.reply.message_id)
+    image_data = None
+    for seg in replied.get("message", []):
+        if seg.get("type") == "image":
+            image_data = seg.get("data", {})
+            break
+    if not image_data:
+        await matcher.finish("你回复的不是图片")
+
+    picture_id = image_data.get("file")
+    md5 = None
+    try:
+        raw = await _fetch_image(image_data.get("url") or picture_id)
+        _, _, md5 = _validate_image(raw)
+    except Exception:
+        pass
+
+    count = storage.delete_quote(
+        group_id=str(event.group_id),
+        deleted_by=str(event.user_id),
+        picture_id=str(picture_id) if picture_id else None,
+        md5=md5,
+    )
+    if count:
+        await matcher.finish("已从本群删除")
+    await matcher.finish("本群没有找到这张名言")
+
+
+stat = on_command("名言统计", priority=5, block=True)
+
+
+@stat.handle()
+async def _(bot: Bot, event: GroupMessageEvent, matcher: Matcher):
     gid = str(event.group_id)
+    global_mode = gid in GGID
+    group_ids = sorted(GGID) if global_mode else [gid]
+    rows, total = storage.stats(group_ids)
 
-    if "说过" in Message:
-        with open(jsonname, "r", encoding="utf8") as readfile:
-            jsondata: str = readfile.read()
-            mappings = json.loads(jsondata)
+    title = "全局名言统计" if global_mode else "本群名言统计"
+    if not rows:
+        await matcher.finish(f"{title}：暂无名言")
 
-        if gid not in GGID:
-            pic = []
-            picc = 0
-            for Key in mappings:
-                if Key != "Plugin":
-                    Data = mappings[Key]
-                    Data_2 = Data["Data"]
-                    if (
-                        Message == Data["Who"]
-                        and gid == Data_2["Group"]
-                        and "Del by" not in Data_2.keys()
-                    ):
-                        picc += 1
-                        if "False" == Data_2["Have sent"]:
-                            pic.append(str(Data_2["Picture ID"]))
-            if len(pic) != 0:
-                num = random.randint(0, len(pic) - 1)
-                img_path = f"data/saying/" + gid + "/" + pic[num]
-                print(img_path)
-                with open(img_path, "rb") as f:
-                    bytes_img = f.read()
-                Msg = MessageSegment.image(bytes_img)
-                await matcher.send(Msg)
+    header = f"{title}（共 {total} 张 / {len(rows)} 人）"
+    lines = [
+        f"{index}. {row['who']}  {row['cnt']} 张"
+        for index, row in enumerate(rows, start=1)
+    ]
 
-                for Key in mappings:
-                    if Key != "Plugin":
-                        Data = mappings[Key]
-                        Data_2 = Data["Data"]
-                        if (
-                            Message in Data["Who"]
-                            and gid == Data_2["Group"]
-                            and pic[num] == Data_2["Picture ID"]
-                        ):
-                            Data_2["Have sent"] = "True"
-                            break
-            if (len(pic) == 1) or (len(pic) == 0 and picc > 0):
-                for Key in mappings:
-                    if Key != "Plugin":
-                        Data = mappings[Key]
-                        Data_2 = Data["Data"]
-                        if Message in Data["Who"] and gid == Data_2["Group"]:
-                            Data_2["Have sent"] = "False"
-            if (len(pic) != 0) or (len(pic) == 0 and picc > 0):
-                with open(jsonname, "w", encoding="utf8") as writejson:
-                    json.dump(mappings, writejson, ensure_ascii=False)
+    if len(lines) <= 15:
+        await matcher.send(header + "\n" + "\n".join(lines))
+        return
+
+    pages = [lines[i : i + 15] for i in range(0, len(lines), 15)]
+    nodes = []
+    for index, page in enumerate(pages, start=1):
+        content = (header + "\n" if index == 1 else "") + "\n".join(page)
+        if index == len(pages):
+            content += f"\n【第{index}页-完】"
         else:
-            pic = []
-            gls = []
-            picc = 0
-            for Key in mappings:
-                if Key != "Plugin":
-                    Data = mappings[Key]
-                    Data_2 = Data["Data"]
-                    if Message == Data["Who"] and "Del by" not in Data_2.keys():
-                        picc += 1
-                        if "False" == Data_2["Have sent"]:
-                            pic.append(str(Data_2["Picture ID"]))
-                            gls.append(str(Data_2["Group"]))
-            if len(pic) != 0:
-                num = random.randint(0, len(pic) - 1)
-                img_path = f"data/saying/" + gls[num] + "/" + pic[num]
-                print(img_path)
-                with open(img_path, "rb") as f:
-                    bytes_img = f.read()
-                Msg = MessageSegment.image(bytes_img)
-                await matcher.send(Msg)
+            content += f"\n【第{index}页】"
+        nodes.append(
+            {
+                "type": "node",
+                "data": {
+                    "name": "名言统计",
+                    "uin": bot.self_id,
+                    "content": content,
+                },
+            }
+        )
 
-                for Key in mappings:
-                    if Key != "Plugin":
-                        Data = mappings[Key]
-                        Data_2 = Data["Data"]
-                        if (
-                            Message in Data["Who"]
-                            and gls[num] == Data_2["Group"]
-                            and pic[num] == Data_2["Picture ID"]
-                        ):
-                            Data_2["Have sent"] = "True"
-                            break
-            if (len(pic) == 1) or (len(pic) == 0 and picc > 0):
-                for Key in mappings:
-                    if Key != "Plugin":
-                        Data = mappings[Key]
-                        Data_2 = Data["Data"]
-                        if Message in Data["Who"]:
-                            Data_2["Have sent"] = "False"
-            if (len(pic) != 0) or (len(pic) == 0 and picc > 0):
-                with open(jsonname, "w", encoding="utf8") as writejson:
-                    json.dump(mappings, writejson, ensure_ascii=False)
-
-
-matcher = on_command("名言删除")
-
-
-@matcher.handle()
-async def _(event: GroupMessageEvent):
-    uid = str(event.user_id)
-
-    check = str(event.reply)
-    if check != "None":
-        mes_id = event.reply.message_id
-        bot = get_bot()
-        r_mes = await bot.get_msg(message_id=mes_id)
-        img_name: str = r_mes["message"][0]["data"]["file"]
-        print(img_name)
-        delgid = mapping_table_del(img_name, uid)
-
-        if delgid != 0:
-            img_path = f"data/saying/" + delgid + "/" + img_name
-            with open(img_path, "rb") as f:
-                bytes_img = f.read()
-            Msg = MessageSegment.image(bytes_img)
-            await matcher.send("已删除" + Msg + ",请确保此为想删除的原图哦")
+    try:
+        await bot.send_group_forward_msg(group_id=event.group_id, messages=nodes)
+    except Exception:
+        logger.exception("名言统计合并转发失败，改为分段发送")
+        for index, page in enumerate(pages, start=1):
+            content = (header + "\n" if index == 1 else "") + "\n".join(page)
+            await matcher.send(content)

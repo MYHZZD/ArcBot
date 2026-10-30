@@ -1,21 +1,41 @@
-import json
-import os
-from datetime import datetime
-from collections import defaultdict
+"""getgold 离线分析：直接读取 data/getgold/getgold.db。
 
-FILE_PATH = "../../data/getgold/price_history.json"
+用法：
+    python getgold/analyze.py
+    python getgold/analyze.py --days 7
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+import sqlite3
+from collections import defaultdict
+from datetime import datetime
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+DB_PATH = Path(os.getenv("GETGOLD_DB", PROJECT_ROOT / "data" / "getgold" / "getgold.db"))
 WINDOW_SIZE = 15  # 区间窗口大小
 
 
-def load_history(file_path):
-    """加载 JSON 历史数据"""
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"文件 {file_path} 不存在")
-    with open(file_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    if not isinstance(data, list):
-        raise ValueError("JSON 根元素应为列表")
-    return data
+def load_history(db_path: Path, days: int | None = None):
+    """加载价格历史，返回 [{'time': float, 'price': float}, ...]。"""
+    if not db_path.is_file():
+        raise FileNotFoundError(f"数据库不存在: {db_path}")
+    conn = sqlite3.connect(str(db_path))
+    try:
+        sql = "SELECT ts, price FROM prices"
+        params: list[float] = []
+        if days is not None:
+            cutoff = datetime.now().timestamp() - days * 86400
+            sql += " WHERE ts >= ?"
+            params.append(cutoff)
+        sql += " ORDER BY ts ASC, id ASC"
+        rows = conn.execute(sql, params).fetchall()
+        return [{"time": float(r[0]), "price": float(r[1])} for r in rows]
+    finally:
+        conn.close()
 
 
 def format_time(timestamp):
@@ -29,20 +49,18 @@ def analyze_extremes(history):
       - 单次最大涨跌幅（相邻两点）
       - 区间最大涨跌幅（窗口内首尾）
     """
-    # 提取价格列表（忽略可能存在的 "推送" 字段）
     prices = []
     times = []
     for record in history:
         if "price" in record and record["price"] is not None:
             prices.append(float(record["price"]))
-            times.append(record.get("time", 0))  # 若缺 time 则用索引
+            times.append(record.get("time", 0))
 
     if len(prices) < 2:
         print("数据点不足，至少需要 2 条记录。")
         return
 
-    # ---------- 1. 单次变化 ----------
-    single_changes = []  # 存储 (涨幅‰, 起始时间, 结束时间)
+    single_changes = []
     for i in range(1, len(prices)):
         p_prev = prices[i - 1]
         p_curr = prices[i]
@@ -51,11 +69,13 @@ def analyze_extremes(history):
         change_per_mille = (p_curr - p_prev) / p_prev * 1000
         single_changes.append((change_per_mille, times[i - 1], times[i]))
 
-    # 找最大涨幅和最大跌幅
+    if not single_changes:
+        print("没有可计算的相邻变化。")
+        return
+
     max_increase = max(single_changes, key=lambda x: x[0])
     max_decrease = min(single_changes, key=lambda x: x[0])
 
-    # ---------- 2. 区间变化（滑动窗口） ----------
     interval_changes = []
     for i in range(len(prices) - WINDOW_SIZE):
         p_start = prices[i]
@@ -71,12 +91,11 @@ def analyze_extremes(history):
     else:
         max_interval_inc = max_interval_dec = None
 
-    # ---------- 输出结果 ----------
     print("=" * 50)
     print("价格历史分析结果（变化率单位：‰）")
     print("=" * 50)
 
-    print(f"\n【单次相邻变化】")
+    print("\n【单次相邻变化】")
     print(f"最大涨幅: {max_increase[0]:.3f}‰")
     print(f"  发生时段: {format_time(max_increase[1])} → {format_time(max_increase[2])}")
     print(f"最大跌幅: {max_decrease[0]:.3f}‰")
@@ -97,10 +116,7 @@ def analyze_extremes(history):
 
 
 def analyze_daily_extremes(history):
-    """
-    每天内的局部极值（相邻 + 区间窗口）
-    """
-    # 按日期分组
+    """每天内的局部极值（相邻 + 区间窗口）"""
     daily_data = defaultdict(list)
     for record in history:
         if "price" in record and record["price"] is not None:
@@ -116,15 +132,14 @@ def analyze_daily_extremes(history):
 
     for date_key in sorted(daily_data.keys()):
         items = daily_data[date_key]
-        items.sort(key=lambda x: x[0])  # 按时间排序
+        items.sort(key=lambda x: x[0])
         times = [t for t, _ in items]
         prices = [p for _, p in items]
         n = len(prices)
 
         if n < 2:
-            continue  # 当天至少两个点才能计算相邻变化
+            continue
 
-        # ---- 相邻变化 ----
         adj_changes = []
         for i in range(1, n):
             p_prev = prices[i - 1]
@@ -140,7 +155,6 @@ def analyze_daily_extremes(history):
         else:
             max_adj_inc = max_adj_dec = None
 
-        # ---- 区间变化（滑动窗口，窗口大小 WINDOW_SIZE） ----
         interval_changes = []
         for i in range(n - WINDOW_SIZE):
             p_start = prices[i]
@@ -156,17 +170,14 @@ def analyze_daily_extremes(history):
         else:
             max_int_inc = max_int_dec = None
 
-        # ---- 输出当天结果 ----
         print(f"\n日期: {date_key}  (共 {n} 个数据点)")
 
-        # 相邻
         if max_adj_inc is not None:
             print(f"  相邻最大涨幅: {max_adj_inc[0]:.3f}‰  ({format_time(max_adj_inc[1])} → {format_time(max_adj_inc[2])})")
             print(f"  相邻最大跌幅: {max_adj_dec[0]:.3f}‰  ({format_time(max_adj_dec[1])} → {format_time(max_adj_dec[2])})")
         else:
             print("  相邻变化: 数据不足")
 
-        # 区间
         if max_int_inc is not None:
             print(f"  {WINDOW_SIZE}点区间最大上涨: {max_int_inc[0]:.3f}‰  ({format_time(max_int_inc[1])} → {format_time(max_int_inc[2])})")
             print(f"  {WINDOW_SIZE}点区间最大下跌: {max_int_dec[0]:.3f}‰  ({format_time(max_int_dec[1])} → {format_time(max_int_dec[2])})")
@@ -175,9 +186,15 @@ def analyze_daily_extremes(history):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--db", type=Path, default=DB_PATH)
+    parser.add_argument("--days", type=int, default=None, help="只分析最近 N 天")
+    args = parser.parse_args()
+
     try:
-        history = load_history(FILE_PATH)
+        history = load_history(args.db, args.days)
+        print(f"数据库: {args.db}  记录数: {len(history)}")
         analyze_extremes(history)
         analyze_daily_extremes(history)
-    except Exception as e:
-        print(f"错误: {e}")
+    except Exception as exc:
+        print(f"错误: {exc}")
